@@ -1,3 +1,11 @@
+공부를 위해 참조한 웹 사이트 모음
+======================
+참조: 웹사이트 devkuma, "PostgreSQL | 스키마(Schema) | 데이터베이스, 스키마, 테이블의 관계"<br>
+URL: https://www.devkuma.com/docs/postgresql/데이터베이스-스키마-테이블의-관계/<br>
+
+참조:  곰탱푸닷컴, "psycopg2로 PostgreSQL CRUD 클래스 구현하기"<br>
+URL:  https://www.bearpooh.com/148<br>
+
 2023.11.11
 ======================
 
@@ -54,5 +62,5 @@ PosgreSQL에서는 모든 이름의 스키마를 만들 수 있음<br>
 A 계정의 apple 파일을 지웠다고 B 계정에 apple이 지워지지는 않음
 
 
-참조: 웹사이트 devkuma, "PostgreSQL | 스키마(Schema) | 데이터베이스, 스키마, 테이블의 관계"
+참조: 웹사이트 devkuma, "PostgreSQL | 스키마(Schema) | 데이터베이스, 스키마, 테이블의 관계"<br>
 URL: https://www.devkuma.com/docs/postgresql/데이터베이스-스키마-테이블의-관계/
