@@ -1,7 +1,28 @@
+
 import psycopg2
 
-# Connect to your postgres DB
-# conn = psycopg2.connect("host=localhost dbname=PostgreSQL16_ACME user=postgres password=post1234")
+#####################################################3
+#   Goal: Create and Control PostgreSQL DB
+#   Problem Example: Create Student Database
+#  
+#   School Database
+#       Student Table:
+#           1. Student ID
+#           2. Name
+#           3. Age
+#           4. Grade
+#   
+#       Class Table:
+#           1. Class ID
+#           2. Name
+#           3. Teacher
+#           4. Class Time
+#
+#   Update Student ID
+#   Delete Class Time
+#   Retrieve Student ID
+#   
+#   
 
 class PostgreDB():
     # Connect PostgresDB 
@@ -167,4 +188,5 @@ class PostgreDB():
     
 
 db = PostgreDB()
-
+db.create_table()
+# ...
