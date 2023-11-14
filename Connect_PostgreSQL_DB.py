@@ -1,7 +1,7 @@
 
 import psycopg2
 
-#####################################################3
+#####################################################
 #   Goal: Create and Control PostgreSQL DB
 #   Problem Example: Create Student Database
 #  
@@ -24,18 +24,20 @@ import psycopg2
 #   
 #   
 
+
+
 class PostgreDB():
     # Connect PostgresDB 
-    def __init__(self, host, dbname, user, password, port):
-        self.host = 'localhost'
-        self.dbaname = 'postgres'
-        self.user = 'postgres'
-        self.password = 'post124'
-        self.port = 8080
+    def __init__(self, host='localhost', dbname='postgres', user='postgres', password='post1234', port=8080):
+        self.host = host
+        self.dbname = dbname
+        self.user = user
+        self.password = password
+        self.port = port
     
         try:
-            self.conn = psycopg2.connect(host=self.host, dbname=self.dbaname, user=self.user, password=self.password, port=self.port)
-
+            self.conn = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user, password=self.password, port=self.port)
+            print("Success")
         except Exception as e:
             print(e)
         else:
@@ -90,7 +92,7 @@ class PostgreDB():
 
         schema_table = self.make_table_name(schema_name, table_name)
 
-        insert_sql = "INSERT INTO {schema_table} ({column}) VALUES ('{data}');".foramt(schema_table=schema_table, column=column_name, data=data)
+        insert_sql = "INSERT INTO {schema_table} ({column}) VALUES ('{data}');".format(schema_table=schema_table, column=column_name, data=data)
         
         result = self.execute(insert_sql, "insert")
 
@@ -186,7 +188,54 @@ class PostgreDB():
        
         return result
     
+    # 데이터 베이스 생성 함수
+    # CREATE DATABASE {database_name}
+    # CREATE DATABASE {database_name} TABLESPACE {tablespace_name}
+
+    # 데이터 베이스 삭제 함수
 
 db = PostgreDB()
-db.create_table()
+
+# \ 사용 불가
+# db.cur.execute('\l')
+
+autocommit = psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
+print("ISOLATION_LEVEL:", psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+db.conn.set_isolation_level(autocommit)
+
+db.cur.execute('CREATE DATABASE SCHOOL;')
+print("DATABASE created successfully")
+
+testDB = "school"
+db = PostgreDB(dbname=testDB)
+# \ 사용 불가
+#db.cur.execute('\c ' + testDB + ';')
+print("DATABASE JUMP Successfully!")
+
+db.cur.execute("""CREATE TABLE Student(
+            student_id BIGSERIAL PRIMARY KEY,
+            name VARCHAR (30) UNIQUE NOT NULL,
+            Age SERIAL NOT NULL,
+            grade CHAR (1) NOT NULL);
+            """)
+db.conn.commit()
+
+db.cur.execute('SELECT * FROM Student;')
+rows = db.cur.fetchall()
+
+# Insert 쿼리 작성 후 체크
+print("print Table's values")
+for row in rows:
+    print(f'{testDB}: {row}')
+
+db.conn.commit()
+db.__del__()
+'''
+db.create_table(schema_name="public", table_name="student", columns="Student_ID character[8]")
+db.create_table(schema_name="public", table_name="student", columns="Student_ID character[8]")
+
+db.insert(table_name="student", column_name="Student_ID", data="19011000", schema_name="public")
+p = db.select(table_name="student", columns="Student_ID", conditions="", schema_name="public")
+print(p)
+'''
 # ...
