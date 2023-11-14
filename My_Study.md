@@ -6,6 +6,65 @@ URL: https://www.devkuma.com/docs/postgresql/데이터베이스-스키마-테이
 참조:  곰탱푸닷컴, "psycopg2로 PostgreSQL CRUD 클래스 구현하기"<br>
 URL:  https://www.bearpooh.com/148<br>
 
+2023.11.14
+======================
+
+## conn 함수, Database 연결
+PostgreSQL에 연결하기 위한 라이브러리, psycopg2 <br>
+
+해당 라이브러리에서 제공하는, 아주 기초적인, 함수는 conn 함수이다.<br>
+postgreSQL을 열어놓은 서버에 있는 database에 연결하는 함수이다. <br>
+
+postgreSQL을 설치하면, psql이라는 앱도 같이 설치가 된다. <br>
+psql로 postgreSQL DB를 컨트롤할 수 있다.<br>
+GUI를 제공하는 pgAdmin 4를 설치해 사용할 수도 있다.<br>
+
+초기 설치를 한 경우:<br>
+"postgres"<br>
+"template1"<br>
+"template2"<br>
+을 확인할 수 있다. (psql에서 \l 입력) <br>
+
+conn 함수에 필요로 하는 파라미터는 다음과 같다. <br>
+<b>host, dbname, user, password, port<b> <br>
+host: postgreSQL DB를 열어놓은 서버의 ip 주소<br>
+dbname: 연결하고자 하는 DATABASE 이름<br>
+user: postgreSQL에 등록해놓은 계정, 초기 설정은 postgres(Master ID) <br>
+passwd: user의 비밀번호, 초기 설정은 postgres의 비밀번호(Master PW) <br>
+port: PostgreSQL DB를 열어놓은 서버의 port 번호 <br>
+
+## postgreSQL configuration 파일
+postgreSQL의 설정 정보를 담은 파일이다. <br>
+저장 공간을 따로 지정하지 않은 경우, 'c:/Program Files/PostgreSQL/16/data/postgresql.conf'<br>
+
+세부 설정 정보는 다음에 알아보기로.
+
+## TABLE 생성후 psql과 pgAdmin에서 확인하는 법
+### psql
+\l <br>
+![image](https://github.com/gom125/OpenSource-SW-Design/assets/142817235/b8fe29d0-209e-4499-b916-89459c36443d)
+\c (db_name) <br>
+\dt <br>
+![image](https://github.com/gom125/OpenSource-SW-Design/assets/142817235/b7a29281-a1f6-4c52-8577-ac2f324a7907) <br>
+SELECT * FROM (table_name); <br>
+![image](https://github.com/gom125/OpenSource-SW-Design/assets/142817235/37360751-9a74-4d06-bccf-e3b08fda32e6)<br>
+
+### pgAdmin
+Database > Schema > Table > (생성한 table) > (Columns) <br>
+![image](https://github.com/gom125/OpenSource-SW-Design/assets/142817235/7e96af42-dc03-421a-98f0-0c07ef1a4d14)<br>
+
+## 발견한 문제점 및 주의 사항
+생성하고자 하는 것이 존재하면 멈추게 됨.<br>
+당연한 이야기이지만, 기존에 존재했던 목록들을 <br>
+파이썬으로 반환받아 체크한 다음에 <br>
+생성을 시켜야 함.<br>
+
+\ 문자를 execute 함수에 사용했을 경우<br>
+동작하지 않음
+
+## 결론
+### <b><i>기본적인 쿼리문 작동을 확인함, DBBinding 이후 제대로된 클래스와 함수 생성 필요<i><b>
+
 2023.11.11
 ======================
 
