@@ -27,8 +27,68 @@ import psycopg2
 
 
 class PostgreDB():
+    __slots__ = (
+        # For Connect PostgreSQL DB Server
+        'host', 
+        'dbname', 
+        'user', 
+        'password',
+        'port',
+        # Connect and Control
+        'conn',
+        'cur',
+		# acme와 연결하기 위한 경로 및 초기 설정
+		'path',
+		'cacheSize',
+		'writeDelay',
+		'maxRequests',
+		# 동기화 문제를 위한 초기 설정
+		'lockResources',
+		'lockIdentifiers',
+		'lockChildResources',
+		'lockStructuredIDs',
+		'lockSubscriptions',
+		'lockBatchNotifications',
+		'lockStatistics',
+		'lockActions',
+		'lockRequests',
+		# TinyDB를 사용하기 위한 json 파일
+		'fileResources',
+		'fileIdentifiers',
+		'fileSubscriptions',
+		'fileBatchNotifications',
+		'fileStatistics',
+		'fileActions',
+		'fileRequests',
+		# ACME 리소스
+		'dbResources',
+		'dbIdentifiers', 		
+		'dbSubscriptions', 	
+		'dbBatchNotifications',
+		'dbStatistics',
+		'dbActions',	
+		'dbRequests',	
+		# 테이블 생성
+		'tabResources',
+		'tabIdentifiers',
+		'tabChildResources',
+		'tabStructuredIDs',
+		'tabSubscriptions',
+		'tabBatchNotifications',
+		'tabStatistics',
+		'tabActions',
+		'tabRequests',
+		# TinyDB 쿼리문
+		'resourceQuery',
+		'identifierQuery',
+		'subscriptionQuery',
+		'batchNotificationQuery',
+		'actionsQuery',
+		'requestsQuery',
+	)
+
     # Connect PostgresDB 
-    def __init__(self, host='localhost', dbname='postgres', user='postgres', password='post1234', port=8080):
+    def __init__(self, host='localhost', dbname='postgres', user='postgres', password='post1234', port=5432):
         self.host = host
         self.dbname = dbname
         self.user = user
@@ -38,11 +98,13 @@ class PostgreDB():
         try:
             self.conn = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user, password=self.password, port=self.port)
             print("Success")
+            
         except Exception as e:
             print(e)
         else:
             self.cur = self.conn.cursor()
-
+            # db.conn.cursor()
+            # db.cur
     # 종료
     def __del__(self):
         self.cur.close()
