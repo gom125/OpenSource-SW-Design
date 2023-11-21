@@ -3,8 +3,40 @@
 참조: 웹사이트 devkuma, "PostgreSQL | 스키마(Schema) | 데이터베이스, 스키마, 테이블의 관계"<br>
 URL: https://www.devkuma.com/docs/postgresql/데이터베이스-스키마-테이블의-관계/<br>
 
-참조:  곰탱푸닷컴, "psycopg2로 PostgreSQL CRUD 클래스 구현하기"<br>
+참조: 곰탱푸닷컴, "psycopg2로 PostgreSQL CRUD 클래스 구현하기"<br>
 URL:  https://www.bearpooh.com/148<br>
+
+참조: 개인블로그, "[PostgreSQL] 데이터베이스 & 스키마 & 테이블 생성법"<br>
+URL:  https://velog.io/@dailylifecoding/postgresql-create-schema-and-table#%F0%9F%A5%9D-schema-%EC%83%9D%EC%84%B1--%EC%A0%81%EC%9A%A9<br>
+
+참조: PostgreSQL Documatation, "Chapter 8. Data Types"<br>
+URL:  https://www.postgresql.org/docs/current/dataty"pe.html<br>
+
+참조: stackoverflow, "Is postgres caching my query?"<br>
+URL:  https://stackoverflow.com/questions/45155221/is-postgres-caching-my-query<br>
+
+참조: tinyDB documantation<br>
+URL:  https://tinydb.readthedocs.io/en/latest/usage.html#handling-data<br>
+
+
+2023.11.21
+======================
+
+## Storage.py 분석
+tinyDB를 사용할 때 cache_size라는 변수를 지정하는 데<br>
+이 변수는 캐시 쿼리를 하기 위해서 사용된다. <br>
+
+PostgreSQL에 연결할 때 cache_size를 사용하지 않거나 어떤 설정을 해야함 <br>
+
+## TinyDB의 데이터와 Postgre의 데이터 자료형 일치화 필요
+TinyDB의 데이터는 딕셔너리 형태로 저장이 되고 있다.<br>
+Postgre의 데이터 자료를 일치시면 테이블의 columns로 구현이 가능하다.<br>
+
+## Table를 생성하면서 columns을 선언하는 함수 구현 필요
+columns를 작성할 때, 괄호()로 묶은 다음, 이름, 자료형, 특징을<br>
+작성하는데 이를 구분할 간단한 코드와 자료형, 특징값의 공부 필요
+
+PK는 Primary Key를 의미한다.
 
 2023.11.14
 ======================
