@@ -1,5 +1,5 @@
-
 import psycopg2
+from Storage import *
 
 #####################################################
 #   Goal: Create and Control PostgreSQL DB
@@ -34,12 +34,17 @@ class PostgreDB():
         'user', 
         'password',
         'port',
+        'autocreate',
+        'autocommit',
         # Connect and Control
         'conn',
         'cur',
+        # Create
+        'schema_name',
+        'table_name',
 		# acme와 연결하기 위한 경로 및 초기 설정
 		'path',
-		'cacheSize',
+		'cacheSize',    # 쿼리 캐시
 		'writeDelay',
 		'maxRequests',
 		# 동기화 문제를 위한 초기 설정
@@ -52,7 +57,7 @@ class PostgreDB():
 		'lockStatistics',
 		'lockActions',
 		'lockRequests',
-		# TinyDB를 사용하기 위한 json 파일
+		# json 파일 for PostgreSQL
 		'fileResources',
 		'fileIdentifiers',
 		'fileSubscriptions',
@@ -88,29 +93,46 @@ class PostgreDB():
 	)
 
     # Connect PostgresDB 
-    def __init__(self, host='localhost', dbname='postgres', user='postgres', password='post1234', port=5432):
+    def __init__(self, host='localhost', dbname='postgres', user='postgres', password='post1234', port=5432, autocreate=False):
         self.host = host
         self.dbname = dbname
         self.user = user
         self.password = password
         self.port = port
+        self.autocreate = autocreate  # Auto-create 'DBname' Database
     
         try:
             self.conn = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user, password=self.password, port=self.port)
-            print("Success")
             
         except Exception as e:
             print(e)
+            
+            if self.autocreate:
+                # DATABASE 자동 생성
+                # 마스터 계정인 postgres로 진입 후
+                # 접근하고자 하는 데이터 베이스 생성
+                self.conn = psycopg2.connect(host=self.host, dbname='postgres', user=self.user, password=self.password, port=self.port)
+                self.cur = self.conn.cursor()
+
+                autocommit = psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
+                print("ISOLATION_LEVEL:", psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+                self.conn.set_isolation_level(autocommit)
+                self.Create_Database(dbname=self.dbname)            
+
+                self.conn = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user, password=self.password, port=self.port)
         else:
             self.cur = self.conn.cursor()
-            # db.conn.cursor()
-            # db.cur
+
+        
+
     # 종료
     def __del__(self):
         self.cur.close()
         self.conn.close()
 
-    # Execute
+    # psycopg2's wrapper function (execute)
+    # msg is what your initial query or purpose 
+    # SELECT, UPDATE, CREATE, ...
     def execute(self, query, msg=""):
         assert query is not None, "query is not allowed None"
         assert msg is not None, "msg is not allowed None"
@@ -118,7 +140,7 @@ class PostgreDB():
         try:
             self.cur.execute(query)
 
-            is_select = query.upper().startswitch('SELECT ')
+            is_select = query.upper().startswith('SELECT ')
             result = None
 
             if is_select:
@@ -129,8 +151,57 @@ class PostgreDB():
             return result
         except Exception as e:
             print("Error Occured in {msg} Data!", format(msg=msg), e)
-    
-    # 테이블 이름 생성
+
+    # Create Database
+    def Create_Database(self, dbname):
+        assert dbname is not None, "dbname is not allowed None"
+        query = f'CREATE DATABASE {dbname}'
+        self.execute(query, 'CREATE')
+
+    # 테이블만 생성
+    def Create_Table(self, table_name, columns:list, types:list, condition:list, schema_name="public"):
+        assert table_name is not None, "table_name is not allowed None"
+        assert columns is not None, "columns is not allowed None"
+        assert condition is not None, "condition is not allowed None"
+
+        # 스키마가 public
+        if schema_name == "public":
+            query = f'CREATE TABLE {table_name} ('
+            for col, type, con in zip(columns, types, condition):
+                query += f'{col} {type} {con}'
+                if col != columns[-1] :
+                    query += ','    
+            query += f');'
+
+            print("query: ", query)
+            self.execute(query, 'CREATE')
+        # 스키마가 다를때, 아직 미구현
+        else :
+            self.schema_name = schema_name
+            # schema 추가 필요
+            print("Schema version not yet")
+
+        db.conn.commit()
+        
+
+    # 이미 생성된 테이블에 추가하는 방식
+    def Add_Columns(self, table_name, columns:list, types:list, condition:list, schema_name="public"):
+        assert table_name is not None, "table_name is not allowed None"
+        assert columns is not None, "columns is not allowed None"
+        assert condition is not None, "condition is not allowed None"
+        
+        for col, type, con in zip(columns, types, condition):
+            query = f'ALTER TABLE {table_name} ADD COLUMN {col} {type} {con}'
+            self.execute(query, 'ALTER')
+
+        db.conn.commit()
+    # 테이블과 columns을 동시에 생성
+    # def Create_Table_Columns
+
+    # columns 변경
+    # def Modify_Columns
+
+    '''# 테이블 이름 생성
     def make_table_name(self, schema_name, table_name):
         assert schema_name is not None, "schema_name is not allowed None"
         assert table_name is not None, "table_name is not allowed None"
@@ -254,33 +325,30 @@ class PostgreDB():
     # CREATE DATABASE {database_name}
     # CREATE DATABASE {database_name} TABLESPACE {tablespace_name}
 
-    # 데이터 베이스 삭제 함수
+    # 데이터 베이스 삭제 함수'''
 
-db = PostgreDB()
 
-# \ 사용 불가
-# db.cur.execute('\l')
-
-autocommit = psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
-print("ISOLATION_LEVEL:", psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-db.conn.set_isolation_level(autocommit)
-
-db.cur.execute('CREATE DATABASE SCHOOL;')
-print("DATABASE created successfully")
-
-testDB = "school"
-db = PostgreDB(dbname=testDB)
+testDB = "acme"
+db = PostgreDB(dbname=testDB, autocreate=True)
 # \ 사용 불가
 #db.cur.execute('\c ' + testDB + ';')
 print("DATABASE JUMP Successfully!")
 
-db.cur.execute("""CREATE TABLE Student(
+table_name = 'srn'
+colm = ['snr', 'ri']
+ty=['VARCHAR (16)', 'VARCHAR (16)']
+cond = ['PRIMARY KEY', 'NOT NULL']
+
+db.Create_Table(table_name=table_name, columns=colm, types=ty, condition=cond)
+'''db.cur.execute("""CREATE TABLE Student(
             student_id BIGSERIAL PRIMARY KEY,
             name VARCHAR (30) UNIQUE NOT NULL,
             Age SERIAL NOT NULL,
             grade CHAR (1) NOT NULL);
             """)
+'''
 db.conn.commit()
+print("CREATE TABLE Successfully!")
 
 db.cur.execute('SELECT * FROM Student;')
 rows = db.cur.fetchall()
