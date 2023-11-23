@@ -18,6 +18,88 @@ URL:  https://stackoverflow.com/questions/45155221/is-postgres-caching-my-query<
 참조: tinyDB documantation<br>
 URL:  https://tinydb.readthedocs.io/en/latest/usage.html#handling-data<br>
 
+참조: stackoverflow, "Lock a table with ACCESS EXCLUSIVE using psycopg2?"<br>
+URL: https://stackoverflow.com/questions/50325195/lock-a-table-with-access-exclusive-using-psycopg2<br>
+
+참조: postgreSQL, "jsonb 자료형 다루기"<br>
+URL: https://postgresql.kr/blog/postgresql_jsonb.html<br>
+
+참조: 개인블로그, [DB] Postgresql Lock 파헤치기<br>
+URL: https://chrisjune-13837.medium.com/db-postgresql-lock-%ED%8C%8C%ED%97%A4%EC%B9%98%EA%B8%B0-57d37ebe057<br>
+
+2023.11.23
+======================
+
+## Storage.py 업데이트
+acme 자체가 업데이트 되어 있음<br>
+Storage.py가 업데이트 되어 있고 주석이 달린 것으로 보아 <br>
+업데이트 실행
+
+## 동기화를 위한 테이블 Lock 문제
+결론: 쿼리로 처리한다.<br>
+참조: https://stackoverflow.com/questions/50325195/lock-a-table-with-access-exclusive-using-psycopg2 <br>
+
+각 테이블들이 업데이트와 같은 수정을 하고자 할 때 Lock을 걸고 수행을 한다.<br>
+테이블에 Lock을 걸어야 하나. psycopg2에서는 connect 함수를 통해 Database에 접근한다.<br>
+
+## Lock 처리를 위한 과정
+참조: https://chrisjune-13837.medium.com/db-postgresql-lock-%ED%8C%8C%ED%97%A4%EC%B9%98%EA%B8%B0-57d37ebe057<br>
+종류: Read Lock, Write Lock, Race Condition, 명시적 Lock <br>
+
+### Read Lock - AcessShareLock
+사용 예시: <b>begin;<b> select * from item;<br>
+설명: begin;으로 실행하게 되면 쿼리문이 transcation으로 묶이게 되어<br>
+commit이나 rollback을 입력하기 전까지 모든 쿼리문을 무시한다.<br>
+Postgresql에서는 pg_catalog라는 스키마에 다양한 메타정보를 관리한다.<br>
+그 중 pg_locks view는 database server에 현재 transaction에서 잡혀있는 lock에 대한 정보를 제공한다..<br>
+
+### Write Lock - RowExclusiveLock
+사용 예시: update 등등 수정을 요청하는 쿼리 발생시 자동 설정<br> 
+설명: 데이터의 정합성과 무결성을 정하는 격리수준인 Isolation level이<br>
+대부분의 Database에서는 Read Committed로 되어있다.<br>
+이는 Commit을 한 정보만 다른 세션 또는 트렌젝션에서 확인할 수 있다는 의미다.<br>
+
+### Racecondition - ShareLock
+사용 예시: 쓰기 도중에 update와 같은 수정을 요청하는 쿼리 발생시 자동 설정<br>
+설명: ShareLock은 동시 데이터를 변경할 때 생기는 문제를 보호하기 위하여<br>
+먼저 Lock을 잡은 Transactionid에 공유를 요청하는 Lock이다<br>
+
+### Explicit Lock (명시적 락)
+#### Table Lock - AccessExclusiveLock
+사용 예시: <b>BEGIN; Lock<b> table item <b>in ACCESS EXCLUSIVE MODE<b>; <br>
+설명: 테이블 락<br>
+
+#### RowLock — RowShareLock
+사용 예시:  <b>BEGIN; SELECT<b> * FROM item WHERE id=1 <b>FOR UPDATE;<b> <br>
+설명: SELECT FOR UPDATE 문은 Select 명령문 마지막에 붙여서 쓰는 명령어입니다.<br>
+Select의 조회결과에 RowShareLock 을 걸어서 쓰기잠금(ExclusiveLock)을<br>
+걸지 못하도록 하여 해당 row에 데이터를 변경하는 것<br>
+
+## 데이터 일치화 문제
+## postgreSQL DB 생성 문제
+두 가지 같은 선상에 있는 문제다<br>
+현재로서는 postgreSQL DB의 테이블을 생성하기 위한 쿼리가 존재한다.<br>
+1차적으로는 해당 쿼리문을 모두 작성한 다음, <br>
+쿼리문을 함수로 자동 작성하도록 만든다.<br>
+2차적으로는 list가 아닌 dictionary로 쿼리문을 구성하도록 한다.<br>
+3차적으로는 columns를 추가할 수 있는 쿼리를 처리하는 함수를 자동 작성하도록 구현한다.<br><br>
+
+이후 각 테이블에 존재하는 특이한 자료형들을 처리해야 한다. <br>
+any 자료형에 경우 columns를 추가할 수 있는 함수로 작성한다. <br>
+struct의 경우 논의와 분석이 필요하다.<br>
+
+현재로서 참고할만한 자료는 다음과 같다. <br>
+![image](https://github.com/gom125/OpenSource-SW-Design/assets/142817235/6ec14520-e05c-495e-8e14-8b4825c32a27) <br>
+참조: https://postgresql.kr/blog/postgresql_jsonb.html<br>
+
+## Schema 생성 문제
+순서<br>
+1. table 생성<br>
+2. schema 생성<br>
+3. schema 소속 변경<br>
+
+
+
 
 2023.11.21
 ======================
@@ -151,6 +233,9 @@ PosgreSQL에서는 모든 이름의 스키마를 만들 수 있음<br>
 스키마가 다르면 돌일한 테이블 이름으로 테이블을 만들 수 있음<br>
 = 계정을 다르게 생성한 파일<br>
 A 계정의 apple 파일을 지웠다고 B 계정에 apple이 지워지지는 않음
+
+<br>
+작성자: Shin_Jaehyeon
 
 
 참조: 웹사이트 devkuma, "PostgreSQL | 스키마(Schema) | 데이터베이스, 스키마, 테이블의 관계"<br>
