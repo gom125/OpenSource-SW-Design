@@ -39,13 +39,9 @@ Request received: By http or mqtt
 
 Class HttpServer
 _run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
-'''
+
 	def _run(self) -> None:
 		WSGIRequestHandler.protocol_version = "HTTP/1.1"
-
-		# Run the http server. This runs forever.
-		# The server can run single-threadedly since some of the underlying
-		# components (e.g. TinyDB) may run into problems otherwise.
 		if self.flaskApp:
 			# Disable the flask banner messages
 			cli = sys.modules['flask.cli']
@@ -59,11 +55,9 @@ _run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메�
 						  port = self.port, 
 						  threads = self.wsgiThreadPoolSize, 
 						  connection_limit = self.wsgiConnectionLimit)
-'''
     
 _handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
 
-'''
 	def _handleRequest(self, path:str, operation:Operation) -> Response:
 		"""	Get and check all the necessary information from the request and
 			build the internal strutures. Then, depending on the operation,
@@ -76,7 +70,7 @@ _handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받
 			dissectResult = self._dissectHttpRequest(request, operation, path)
 		except ResponseException as e:
 			dissectResult = Result(rsc = e.rsc, request = e.data, dbg = e.dbg)
-'''
+
 
 _dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
 
@@ -93,71 +87,66 @@ embeddedRequest: 내장된 CSERequest 객체를 담는 속성
 주요 메서드:
 
 toData: 결과 데이터를 특정한 직렬화 타입에 따라 문자열이나 바이트, 혹은 JSON으로 변환하여 반환하는 메서드
-	serializeData() 메서드를 사용해서 resource를 직렬화 시킴.
-'''
-if isinstance(self.resource, Resource):
-			r = serializeData(self.resource.asDict(), ct)
-		elif self.dbg:
-			r = serializeData({ 'm2m:dbg' : self.dbg }, ct)
-		elif isinstance(self.resource, dict):
-			r = serializeData(self.resource, ct)
-		elif self.data:									# explicit json or cbor from the dict
-			r = serializeData(cast(JSON, self.data), ct)
-		elif self.request and self.request.pc:		# Return the dict if the request is set and has a dict
-			r = self.request.pc
-		else:
-			r = ''
-		return r
-'''
+serializeData() 메서드를 사용해서 resource를 직렬화 시킴.
+
+	if isinstance(self.resource, Resource):
+				r = serializeData(self.resource.asDict(), ct)
+			elif self.dbg:
+				r = serializeData({ 'm2m:dbg' : self.dbg }, ct)
+			elif isinstance(self.resource, dict):
+				r = serializeData(self.resource, ct)
+			elif self.data:									# explicit json or cbor from the dict
+				r = serializeData(cast(JSON, self.data), ct)
+			elif self.request and self.request.pc:		# Return the dict if the request is set and has a dict
+				r = self.request.pc
+			else:
+				r = ''
+			return r
+
 
 prepareResultFromRequest: 원본 요청으로부터 필요한 필드를 복사하는 메서드
 
 -----
 
 serializeData 메서드
-'''
-def serializeData(data:JSON, ct:ContentSerializationType) -> Optional[str|bytes|JSON]:
-	"""	Serialize a dictionary, depending on the serialization type.
-
-		Args:
-			data: The data to serialize.
-			ct: The *data* content serialization format.
 		
-		Return:
-			A data *str* or *byte* object with the serialized data, or *None*.
-	"""
-	if ct == ContentSerializationType.PLAIN:
-		return data
-	encoder = json if ct == ContentSerializationType.JSON else cbor2 if ct == ContentSerializationType.CBOR else None
-	if not encoder:
-		return None
-	return encoder.dumps(data)	# type:ignore[no-any-return]
-
-
-def deserializeData(data:bytes, ct:ContentSerializationType) -> Optional[JSON]:
-	"""	Deserialize data into a dictionary, depending on the serialization type.
-
-		Args:
-			data: The data to deserialize.
-			ct: The *data* content serialization format.
+		def serializeData(data:JSON, ct:ContentSerializationType) -> Optional[str|bytes|JSON]:
+			"""	Serialize a dictionary, depending on the serialization type.
 		
-		Return:
-			If the *data* is not *None*, but has a length of 0 then an empty dictionary is returned. If an unknown content serialization is specified then *None* is returned. Otherwise, a `JSON` object is returned.
-	"""
-	if len(data) == 0:
-		return {}
-	match ct:
-		case ContentSerializationType.JSON:
-			return cast(JSON, json.loads(TextTools.removeCommentsFromJSON(data.decode('utf-8'))))
-		case ContentSerializationType.CBOR:
-			return cast(JSON, cbor2.loads(data))
-		case _:
-			return None
-
-'''
-
-
-
+				Args:
+					data: The data to serialize.
+					ct: The *data* content serialization format.
+				
+				Return:
+					A data *str* or *byte* object with the serialized data, or *None*.
+			"""
+			if ct == ContentSerializationType.PLAIN:
+				return data
+			encoder = json if ct == ContentSerializationType.JSON else cbor2 if ct == ContentSerializationType.CBOR else None
+			if not encoder:
+				return None
+			return encoder.dumps(data)	# type:ignore[no-any-return]
+		
+		
+		def deserializeData(data:bytes, ct:ContentSerializationType) -> Optional[JSON]:
+			"""	Deserialize data into a dictionary, depending on the serialization type.
+		
+				Args:
+					data: The data to deserialize.
+					ct: The *data* content serialization format.
+				
+				Return:
+					If the *data* is not *None*, but has a length of 0 then an empty dictionary is returned. If an unknown content serialization is specified then *None* is returned. Otherwise, a `JSON` object is returned.
+			"""
+			if len(data) == 0:
+				return {}
+			match ct:
+				case ContentSerializationType.JSON:
+					return cast(JSON, json.loads(TextTools.removeCommentsFromJSON(data.decode('utf-8'))))
+				case ContentSerializationType.CBOR:
+					return cast(JSON, cbor2.loads(data))
+				case _:
+					return None
 
 
 
