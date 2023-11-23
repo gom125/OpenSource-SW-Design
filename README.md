@@ -8,7 +8,7 @@ oneM2M architecture has two basic Entity
 1. AE (Application Entity)
 2. CSE (Common Services Entity)
 
-https://www.onem2m.org/images/app_dev_guide/ArchImg.png
+<img src="http://www.onem2m.org/images/app_dev_guide/ArchImg.png">
 
 AE (Light, Sensor .., Smartphone)
 CSE (Home Gateway, Cloud Service Platform ..)
