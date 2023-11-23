@@ -37,8 +37,8 @@ MQTTClient.py
 
 Request received: By http or mqtt
 
-HttpServer
-	_run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
+Class HttpServer
+_run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
  ''' Python
  
 	def _run(self) -> None:
@@ -62,12 +62,102 @@ HttpServer
 						  connection_limit = self.wsgiConnectionLimit)
 	...
     '''
-	_handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
- 	_dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
+    
+_handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
 
-예를 들어, HTTP 요청의 본문(body)에 있는 데이터를 추출하거나, 요청된 경로(path)를 분석하여 필요한 작업(operation)을 식별하고 이에 따라 필요한 처리를 진행할 수 있습니다. 이 과정에서 분석된 결과는 dissectResult에 저장되고, 이후의 로직에서 이를 활용하여 요청을 처리하고 응답을 생성할 수 있게 됩니다.
+'''
+	def _handleRequest(self, path:str, operation:Operation) -> Response:
+		"""	Get and check all the necessary information from the request and
+			build the internal strutures. Then, depending on the operation,
+			call the associated request handler.
+		"""
+		L.isDebug and L.logDebug(f'==> HTTP Request: {path}') 	# path = request.path  w/o the root
+		L.isDebug and L.logDebug(f'Operation: {operation.name}')
+		L.isDebug and L.logDebug(f'Headers: \n{str(request.headers).rstrip()}')
+		try:
+			dissectResult = self._dissectHttpRequest(request, operation, path)
+		except ResponseException as e:
+			dissectResult = Result(rsc = e.rsc, request = e.data, dbg = e.dbg)
+   ...
+'''
+
+_dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
+
+여기서 _dissectHttpRequest를 통해 request 값이 Result 데이터 클래스의 값으로 변하게 되는데,
+
+Result 이 클래스는 함수들이 반환하는 일반적인 결과 상태를 나타내며, 여러 정보를 포함할 수 있습니다. 이 클래스의 속성은 다양한 종류의 데이터를 저장할 수 있도록 구성되어 있습니다.
+
+resource: 리소스 객체를 담는 속성
+data: 데이터 혹은 데이터 시퀀스를 담는 속성
+rsc: 응답 상태 코드를 담는 속성
+dbg: 디버그 메시지를 담는 속성
+request: CSERequest 객체를 담는 속성
+embeddedRequest: 내장된 CSERequest 객체를 담는 속성
+주요 메서드:
+
+toData: 결과 데이터를 특정한 직렬화 타입에 따라 문자열이나 바이트, 혹은 JSON으로 변환하여 반환하는 메서드
+	serializeData() 메서드를 사용해서 resource를 직렬화 시킴.
+'''
+if isinstance(self.resource, Resource):
+			r = serializeData(self.resource.asDict(), ct)
+		elif self.dbg:
+			r = serializeData({ 'm2m:dbg' : self.dbg }, ct)
+		elif isinstance(self.resource, dict):
+			r = serializeData(self.resource, ct)
+		elif self.data:									# explicit json or cbor from the dict
+			r = serializeData(cast(JSON, self.data), ct)
+		elif self.request and self.request.pc:		# Return the dict if the request is set and has a dict
+			r = self.request.pc
+		else:
+			r = ''
+		return r
+'''
+
+prepareResultFromRequest: 원본 요청으로부터 필요한 필드를 복사하는 메서드
+
+-----
+
+serializeData 메서드
+'''
+def serializeData(data:JSON, ct:ContentSerializationType) -> Optional[str|bytes|JSON]:
+	"""	Serialize a dictionary, depending on the serialization type.
+
+		Args:
+			data: The data to serialize.
+			ct: The *data* content serialization format.
+		
+		Return:
+			A data *str* or *byte* object with the serialized data, or *None*.
+	"""
+	if ct == ContentSerializationType.PLAIN:
+		return data
+	encoder = json if ct == ContentSerializationType.JSON else cbor2 if ct == ContentSerializationType.CBOR else None
+	if not encoder:
+		return None
+	return encoder.dumps(data)	# type:ignore[no-any-return]
 
 
+def deserializeData(data:bytes, ct:ContentSerializationType) -> Optional[JSON]:
+	"""	Deserialize data into a dictionary, depending on the serialization type.
+
+		Args:
+			data: The data to deserialize.
+			ct: The *data* content serialization format.
+		
+		Return:
+			If the *data* is not *None*, but has a length of 0 then an empty dictionary is returned. If an unknown content serialization is specified then *None* is returned. Otherwise, a `JSON` object is returned.
+	"""
+	if len(data) == 0:
+		return {}
+	match ct:
+		case ContentSerializationType.JSON:
+			return cast(JSON, json.loads(TextTools.removeCommentsFromJSON(data.decode('utf-8'))))
+		case ContentSerializationType.CBOR:
+			return cast(JSON, cbor2.loads(data))
+		case _:
+			return None
+
+'''
 
 
 
