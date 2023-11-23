@@ -1,5 +1,27 @@
 # Analysis
 
+# High level architecture
+
+ACME (An open source CSE Middleware for Education)
+
+oneM2M architecture has two basic Entity
+1. AE (Application Entity)
+2. CSE (Common Services Entity)
+
+https://www.onem2m.org/images/app_dev_guide/ArchImg.png
+
+AE (Light, Sensor .., Smartphone)
+CSE (Home Gateway, Cloud Service Platform ..)
+
+ADN-AE > Mca > MN-CSE > Mcc > IN AE
+
+
+CSE
+HttpServer
+
+
+
+
 
 # 1.CSE.py
 CSE(Common Service Entity) 제공 공통 기능
