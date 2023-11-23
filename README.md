@@ -39,8 +39,7 @@ Request received: By http or mqtt
 
 Class HttpServer
 _run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
- ''' Python
- 
+'''
 	def _run(self) -> None:
 		WSGIRequestHandler.protocol_version = "HTTP/1.1"
 
@@ -60,8 +59,7 @@ _run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메�
 						  port = self.port, 
 						  threads = self.wsgiThreadPoolSize, 
 						  connection_limit = self.wsgiConnectionLimit)
-	...
-    '''
+'''
     
 _handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
 
@@ -78,7 +76,6 @@ _handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받
 			dissectResult = self._dissectHttpRequest(request, operation, path)
 		except ResponseException as e:
 			dissectResult = Result(rsc = e.rsc, request = e.data, dbg = e.dbg)
-   ...
 '''
 
 _dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
