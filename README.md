@@ -1,7 +1,6 @@
 # Analysis
 
-# High level architecture
-
+# What is ACME?
 ACME (An open source CSE Middleware for Education)
 
 oneM2M architecture has two basic Entity
@@ -10,10 +9,90 @@ oneM2M architecture has two basic Entity
 
 <img src="http://www.onem2m.org/images/app_dev_guide/ArchImg.png">
 
-AE (Light, Sensor .., Smartphone)
-CSE (Home Gateway, Cloud Service Platform ..)
+AE (Light, Smartphone)
+CSE (Home Gateway, Cloud Service Platform)
 
-ADN-AE > Mca > MN-CSE > Mcc > IN AE
+oneM2M's entities communicate via a RESTful req-res protocol
+> Mca: AE connect with CSE
+> MCC: CSE connect with CSE
+
+Possible flows are:
+AE > CSE
+CSE > AE or CSE
+we need those flows protocol bindings.
+
+ACME Protocol Bindings and Serializations
+Protocols Bindings
+- http
+- MQTT
+
+Serializations
+- JSON
+- CBOR
+
+
+# Request Flow in ACME
+HttpServer.py
+MQTTClient.py
+
+Request received: By http or mqtt
+
+HttpServer
+	_run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
+ '''
+ 
+	def _run(self) -> None:
+		WSGIRequestHandler.protocol_version = "HTTP/1.1"
+
+		# Run the http server. This runs forever.
+		# The server can run single-threadedly since some of the underlying
+		# components (e.g. TinyDB) may run into problems otherwise.
+		if self.flaskApp:
+			# Disable the flask banner messages
+			cli = sys.modules['flask.cli']
+			cli.show_server_banner = lambda *x: None 	# type: ignore
+			# Start the server
+			try:
+				if self.wsgiEnable:
+					L.isInfo and L.log(f'HTTP server listening on {self.listenIF}:{self.port} (wsgi)')
+					serve(self.flaskApp, 
+		   				  host = self.listenIF, 
+						  port = self.port, 
+						  threads = self.wsgiThreadPoolSize, 
+						  connection_limit = self.wsgiConnectionLimit)
+				else:
+					L.isInfo and L.log(f'HTTP server listening on {self.listenIF}:{self.port} (flask http)')
+					self.flaskApp.run(host = self.listenIF, 
+									port = self.port,
+									threaded = True,
+									request_handler = ACMERequestHandler,
+									ssl_context = CSE.security.getSSLContext(),
+									debug = False)
+			except Exception as e:
+				# No logging for headless, nevertheless print the reason what happened
+				if CSE.isHeadless:
+					L.console(str(e), isError=True)
+				if type(e) == PermissionError:
+					m  = f'{e}.'
+					m += f' You may not have enough permission to run a server on this port ({self.port}).'
+					if self.port < 1024:
+						m += ' Try another, non-privileged port > 1024.'
+					L.logErr(m )
+				else:
+					L.logErr(str(e))
+				CSE.shutdown() # exit the CSE. Cleanup happens in the CSE atexit() handler
+    '''
+	_handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
+ 	_dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
+
+예를 들어, HTTP 요청의 본문(body)에 있는 데이터를 추출하거나, 요청된 경로(path)를 분석하여 필요한 작업(operation)을 식별하고 이에 따라 필요한 처리를 진행할 수 있습니다. 이 과정에서 분석된 결과는 dissectResult에 저장되고, 이후의 로직에서 이를 활용하여 요청을 처리하고 응답을 생성할 수 있게 됩니다.
+
+
+
+
+
+
+
 
 
 CSE
