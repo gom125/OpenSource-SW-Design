@@ -39,7 +39,7 @@ Request received: By http or mqtt
 
 HttpServer
 	_run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메서드를 통해 핸들링
- '''
+ ''' Python
  
 	def _run(self) -> None:
 		WSGIRequestHandler.protocol_version = "HTTP/1.1"
@@ -60,27 +60,7 @@ HttpServer
 						  port = self.port, 
 						  threads = self.wsgiThreadPoolSize, 
 						  connection_limit = self.wsgiConnectionLimit)
-				else:
-					L.isInfo and L.log(f'HTTP server listening on {self.listenIF}:{self.port} (flask http)')
-					self.flaskApp.run(host = self.listenIF, 
-									port = self.port,
-									threaded = True,
-									request_handler = ACMERequestHandler,
-									ssl_context = CSE.security.getSSLContext(),
-									debug = False)
-			except Exception as e:
-				# No logging for headless, nevertheless print the reason what happened
-				if CSE.isHeadless:
-					L.console(str(e), isError=True)
-				if type(e) == PermissionError:
-					m  = f'{e}.'
-					m += f' You may not have enough permission to run a server on this port ({self.port}).'
-					if self.port < 1024:
-						m += ' Try another, non-privileged port > 1024.'
-					L.logErr(m )
-				else:
-					L.logErr(str(e))
-				CSE.shutdown() # exit the CSE. Cleanup happens in the CSE atexit() handler
+	...
     '''
 	_handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
  	_dissectHttpRequest(self, request:Request, operation:Operation, path:str) -> Result:
