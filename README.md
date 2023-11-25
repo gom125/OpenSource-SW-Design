@@ -35,6 +35,10 @@ Serializations
 HttpServer.py
 MQTTClient.py
 
+1. HttpServer.py 에서 서버를 실행시키고 _handleRequest 메서드를 http 프로토콜 통해 핸
+
+
+
 Request received: By http or mqtt
 
 Class HttpServer
@@ -56,7 +60,7 @@ _run 메서드를 통해 서버를 실행 > 각종 req들을 _handleRequest 메�
 						  threads = self.wsgiThreadPoolSize, 
 						  connection_limit = self.wsgiConnectionLimit)
     
-_handleRequest 에서 _dissectHttpRequest 함수는 아마도 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
+_handleRequest 에서 _dissectHttpRequest 함수는 HTTP 요청을 받아들여 필요한 정보를 추출하고, 해당 요청을 처리하기 위해 내부적으로 필요한 데이터를 구성
 
 	def _handleRequest(self, path:str, operation:Operation) -> Response:
 		"""	Get and check all the necessary information from the request and
@@ -85,8 +89,7 @@ dbg: 디버그 메시지를 담는 속성
 request: CSERequest 객체를 담는 속성
 embeddedRequest: 내장된 CSERequest 객체를 담는 속성
 주요 메서드:
-
-toData: 결과 데이터를 특정한 직렬화 타입에 따라 문자열이나 바이트, 혹은 JSON으로 변환하여 반환하는 메서드
+1. toData: 결과 데이터를 특정한 직렬화 타입에 따라 문자열이나 바이트, 혹은 JSON으로 변환하여 반환하는 메서드
 serializeData() 메서드를 사용해서 resource를 직렬화 시킴.
 
 	if isinstance(self.resource, Resource):
@@ -104,7 +107,7 @@ serializeData() 메서드를 사용해서 resource를 직렬화 시킴.
 			return r
 
 
-prepareResultFromRequest: 원본 요청으로부터 필요한 필드를 복사하는 메서드
+2. prepareResultFromRequest: 원본 요청으로부터 필요한 필드를 복사하는 메서드
 
 -----
 
