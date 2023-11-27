@@ -154,8 +154,213 @@ serializeData 메서드
 
 
 
-CSE
+
+Flow
+
+acme 실행시 cse에서 flaskApp에 서버 run 시킴
+> 서버 flaskApp에 http request가 들어옴.
+> flaskApp에 Endpoint에 메서드별로 따로 http가 나뉨.
+이때 메서드별로 해당 요청의 기능에 따라 operation enum 클래스를 정해주고
+
+Operation Enum
+Create, Retrieve, Update, Delete, Notify, Discovery, Na
+
+> 해당하는 Operation에 따라 _handleRequest를 실행
+_handleRequest에는
+	dissectHttpRequest라는 메서드를 통해 데이터를 Result 타입으로 변환
+	Dissect an HTTP request. Combine headers and contents into a single structure. Result is returned in Result.request.
+
+이때 cseRequest()를 생성시켜 
+Result 타입으로 반환한다.
+
+Result 클래스는 cseRequest의 값들에서 def toData(self, ct:Optional[ContentSerializationType] = None) -> str|bytes|JSON:
+메서드랑 prepareResultFromRequest 메서드가 추가된 것이다.
+
+> Result타입의 반환된 값을 cse.request.handleRequest에게 넘긴다.
+cse.request에서 handlerequest에서는 Operation에 따라 cse.dispatcher에 process~~ 메서드를 호출하여 실질적인 req를 처리하게끔 한다.
+이때 createLocalResource, update~,, 등의 작업으로 cse.storage에 db.createResource ,,, 등의 CURD 작업을 호출,, 결과 tinyDB에 데이터를 저장하게 된다.
+
+
+
+Flow
+
+
 HttpServer
+
+_run 메서드
+
+flaskApp 서버 실행	addEndpoint로 flaskApp.add_url_rule로 메서드별(GET, POST, PUT, DELETE 에 따라)로 받는 Endpoint 추가 
+
+Endpoint에 요청 들어오면 _handleRequest 메서드에서 dissectHttpRequest 메서드 실행
+
+dissectHttpRequest(request, operation) -> Result
+request 데이터랑 operation(http method enum 클래스) 받아서 
+request 데이터를 CSERequest 형태로 변환 
+리턴값 > Result(request = CSERequest) 
+
+Result클래스 를 반환
+
+Result 클래스에 toData메서드 resource 값을 serializeData() 하
+
+
+
+TinyDB
+
+실질적인 데이터베이스 로직 python으로 테이블 생성 및 CRUD
+
+    """ This class implements the TinyDB binding to the database. It is used by the Storage class.
+    """
+ 
+CRUD
+C = insertResource(Resource, ri)
+R = searchResource(ri,csi,srn,pi,ty,aei) -> list[Document]
+U = updateResource(Resource, ri)
+D = deleteResource(Resource)
+
+> Storage(storage.createResource) > 
+""" This module defines storage managers and drivers for database access.
+
+    Storage managers are used to store, retrieve and manage resources and other runtime data in the database.
+
+    Storage drivers are used to access the database. Currently, the only supported database is TinyDB.
+
+    See also:
+        - `TinyDBBetterTable`
+        - `TinyDBBufferedStorage`
+"""
+
+C = createResource(self, resource:Resource, overwrite:Optional[bool] = True) -> None:
+R = retrieveResource(self, ri:Optional[str] = None, 
+                                csi:Optional[str] = None,
+                                srn:Optional[str] = None, 
+                                aei:Optional[str] = None) -> Resource:
+
+U = updateResource(self, resource:Resource) -> Resource:
+D = deleteResource(self, resource:Resource) -> None:
+
+> Resource(object)
+    """ Base class for all oneM2M resource types,
+    
+        Attributes:
+
+    """
+
+    __slots__ = (
+        'tpe',
+        'readOnly',
+        'inheritACP',
+        'dict',
+        'isImported',
+        '_originalDict',
+    )
+
+    _excludeFromUpdate = [ 'ri', 'ty', 'pi', 'ct', 'lt', 'st', 'rn', 'mgd' ]
+    """ Resource attributes that are excluded when updating the resource """
+
+C = dbCreate(self, overwrite:Optional[bool] = False) -> None:
+R = dbReload(self) -> Resource:
+U = dbUpdate(self, finalize:bool = False) -> Resource:
+D = dbDelete(self) -> None:
+
+> Dispatcher
+
+Dispatch request to operation handler
+
+""" Dispatcher class. Handles all requests and dispatches them to the
+        appropriate handlers. This includes requests for resources, requests
+        for resource creation, and requests for resource deletion.
+    """
+
+C = def createLocalResource(self,
+                            resource:Resource,
+                            parentResource:Resource,
+                            originator:Optional[str] = None,
+                            request:Optional[CSERequest] = None) -> Resource:
+
+processCreateRequest > createLocalResource
+createResourceFromDict > createLocalResource
+
+R
+
+U = def updateLocalResource(self, resource:Resource, 
+                                  dct:Optional[JSON] = None, 
+                                  doUpdateCheck:Optional[bool] = True, 
+                                  originator:Optional[str] = None) -> Resource:
+
+
+D = processDeleteRequest(self, request:CSERequest, 
+                                   originator:str, 
+                                   id:Optional[str] = None) -> Result:
+
+> RequestManager
+
+        # Map request handlers and events for operations in the RequestManager and the dispatcher
+
+def handleRequest(self, request:Union[CSERequest, JSON]) -> Result:
+
+
+self.requestHandlers:RequestHandler = {       
+            Operation.RETRIEVE  : RequestCallback(self.retrieveRequest, 
+                                                  CSE.dispatcher.processRetrieveRequest, 
+                                                  self._sendRequest,
+                                                  self._eventHttpSendRetrieve,
+                                                  self._eventMqttSendRetrieve),
+                                                #   self.sendRetrieveRequest),
+            Operation.DISCOVERY : RequestCallback(self.retrieveRequest, 
+                                                  CSE.dispatcher.processRetrieveRequest, 
+                                                  self._sendRequest,
+                                                  self._eventHttpSendRetrieve,
+                                                  self._eventMqttSendRetrieve),
+                                                #   self.sendRetrieveRequest),
+            Operation.CREATE    : RequestCallback(self.createRequest,
+                                                  CSE.dispatcher.processCreateRequest,
+                                                  self._sendRequest,
+                                                  self._eventHttpSendCreate,
+                                                  self._eventMqttSendCreate),
+                                                #   self.sendCreateRequest),
+            Operation.UPDATE    : RequestCallback(self.updateRequest,
+                                                  CSE.dispatcher.processUpdateRequest,
+                                                  self._sendRequest,
+                                                  self._eventHttpSendUpdate,
+                                                  self._eventMqttSendUpdate),
+                                                #   self.sendUpdateRequest),
+            Operation.DELETE    : RequestCallback(self.deleteRequest,
+                                                  CSE.dispatcher.processDeleteRequest,
+                                                  self._sendRequest,
+                                                  self._eventHttpSendDelete,
+                                                  self._eventMqttSendDelete),
+                                                #   self.sendDeleteRequest),
+            Operation.NOTIFY    : RequestCallback(self.notifyRequest,
+                                                  CSE.dispatcher.processNotifyRequest,
+                                                  self._sendRequest,
+                                                  self._eventHttpSendNotify,
+                                                  self._eventMqttSendNotify),
+                                                #   self.sendNotifyRequest),
+        }
+
+C = createRequest(self, request:CSERequest) -> Result:
+R
+U = updateRequest(self, request:CSERequest) -> Result:
+D = deleteRequest(self, request:CSERequest,) -> Result:
+
+> HttpServer
+
+HttpServer.py에서 flask App을 통해 서버를 열고
+각각 메서드 마다 _handleRequest(메서드별로) endpoint 연결
+
+
+
+
+dissectResult = self._dissectHttpRequest(request, operation, path)
+
+_dissectHttpRequest > Validator > CSERequest
+
+responseResult = CSE.request.handleRequest(dissectResult.request)
+
+
+http > request > CSERequest > Result 
+
+
 
 
 
