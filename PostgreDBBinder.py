@@ -70,11 +70,24 @@
 
 import psycopg
 from psycopg.pq import Escaping
+from psycopg.types.json import Jsonb
 from psycopg import sql
 #import psycopg2
 #import json
 from PostgreDBInit import *
 #from Storage import *
+
+# Constants for database and table names
+_resources = 'resources'
+_identifiers = 'identifiers'
+_srn = "srn"
+_children = 'children'
+_subscriptions = 'subscriptions'
+_statistics = 'statistics'
+_actions = 'actions'
+_batchNotifications = 'batchNotifications'
+_requests = 'requests'
+_schedules = 'schedules'
 
 class PostgreDBBinding():
     __slots__ = (
@@ -88,9 +101,12 @@ class PostgreDBBinding():
         'conn',
         'cur',
         # Create
+        'data',
+        'json_data',
         'schema_name',
         'table_name',
-        'resource',
+        'values',
+        'columns',
 		# acme와 연결하기 위한 경로 및 초기 설정
         # PostgreSQL에 비슷한 용도로는 Shared Buffer가 사용됨
         # 분석 및 논의 필요
@@ -285,6 +301,21 @@ class PostgreDBBinding():
 
         pass
 
+    '''select: 
+            SELECT {column_name} FROM {schema_name}.{table_name} WHERE {condition} order by {column_name2} desc/asc
+            condition: {condition} AND {condition} OR {condition} ...
+            order by desc(내림차순), asc(오름차순)으로 출력
+
+            table:
+                SELECT * FROM {schema_name}.{table_name}
+            column:
+                SELECT {column1}, {column2}, ... FROM {schema_name}.{table_name}
+    '''
+
+    def search(self, query):
+        
+        pass
+
     # Create Database
     def Create_Database(self, dbname):
         #autocommit = psycopg.IsolationLevel
@@ -298,8 +329,7 @@ class PostgreDBBinding():
 
     # Create Tables through Constants for database and table names
     # resources, identifiers, children, ..., schedules
-    def PostgreTABLE(self, table_name, schema_name="public", query = ""):
-        
+    def PostgreTABLE(self, table_name, schema_name="public", query=""):
         if query != "":
             self.execute(query, "CREATE")
         else:
@@ -323,11 +353,74 @@ class PostgreDBBinding():
             data_type = "DICT"
         return data_type
     
+    def WhoPK(self, schema_name):
+        if schema_name == _resources:
+            return "ri"
+        elif schema_name == _identifiers:
+            return "ri"
+        elif schema_name == _srn:
+            return "srn"
+        elif schema_name == _children:
+            return "ri"
+        elif schema_name == _subscriptions:
+            return "ri"
+        elif schema_name == _statistics:
+            return ""
+        elif schema_name == _actions:
+            return "ri"
+        elif schema_name == _batchNotifications:
+            return ""
+        elif schema_name == _requests:
+            return "ts"
+        elif schema_name == _schedules:
+            return "ri"
+        else:
+            try:
+                raise Exception("Schema_name or table_name is incorrect!")  
+            except Exception as e:   
+                print(e)
+            return "error"
+
+    def Create_Table_Jsonb(self, data:dict):
+        self.schema_name:list = data.keys() 
+        PK_info:dict = data.get(self.schema_name[0])
+        PK_info_key = PK_info.keys()
+        PK = self.WhoPK(self.schema_name[0])
+
+        json_data: dict = PK_info.get(PK_info_key) 
+        self.insert(self, table_name = self.schema_name[0], values= [PK_info_key, Jsonb(self.json_data)], columns="", schema_name="public")
+        
+
     # createResource()
     # 테이블이랑 컬럼 생성
-    def Create_Table(self, data:dict):
-        schema_name = 
+    def Create_All_Table(self, data:dict):
+        # schema
+        # keys() return data type is list
+        self.schema_name = data.keys() 
+        # schema's value: dict, {PK : table}
+        # PK_info is dict
+        PK_info = data.get(self.schema_name[0])
+        # PK_info_key is dict's key
+        PK_info_key = PK_info.keys()
+        PK = self.WhoPK(self.schema_name[0])
+        if PK == "error":
+            return Exception("Schema name is incorrect")
         
+        for key in PK_info_key:
+            # table_info is dict
+            table_info = PK_info.get(key)
+            for table_key, table_value in table_info.items():
+
+                # search, SELECT
+                # if table exist
+                #   if value exist 
+                #       update
+                #   else
+                #       insert
+                # else
+                #   create and insert
+                pass
+
         query = ""
 
         print("query: ", query)
