@@ -387,8 +387,10 @@ class PostgreDBBinding():
         PK_info_key = PK_info.keys()
         PK = self.WhoPK(self.schema_name[0])
 
-        json_data: dict = PK_info.get(PK_info_key) 
+        json_data: dict = PK_info.get(PK_info_key)
+        #val = [PK_info_key, [Jsonb(self.json_data)]] 
         self.insert(self, table_name = self.schema_name[0], values= [PK_info_key, Jsonb(self.json_data)], columns="", schema_name="public")
+        #self.insert(self, table_name = self.schema_name[0], values= val, columns="", schema_name="public")
         
 
     # createResource()
