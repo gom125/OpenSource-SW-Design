@@ -1,0 +1,88 @@
+Data type conversion
+Python		|	PostgreSQL
+-----------------------------------------------------
+int		|	smallint, integer, bigint
+float		|	float8
+Decimal		|	numeric
+-----------------------------------------------------
+str		|	varchar, text
+-----------------------------------------------------
+bytes		|
+byesarray	|	bytes
+memoryview	|
+-----------------------------------------------------
+date		|	date
+datetime	|	timestamp	timestamptz(tzinfo set x)
+time		|	time		timetz(tzinfo set x)	
+timedelta	|	interval	
+-----------------------------------------------------
+json		|	json
+jsonb		|	jsonb	->	[Jsonb]
+-----------------------------------------------------
+list		|	list	->	[]
+
+-----------------------------------------------------
+-----------------------------------------------------
+0. PosrgreDBInit.py에 의해 모든 초기 세팅이 이루어진다.
+	- 각 스키마 생성
+	- 스키마의 기본 테이블과 컬럼 생성
+		- PK도 적용
+	- 수정하기 쉽게 쿼리문으로 작성해두었음.
+1. 데이터는 dict 자료형으로 받는다.
+2. 데이터의 첫 번째 키는 스키마의 이름이다.
+3. 첫 번째 키에 대응하는 value는 dict 자료형으로 저장해야할 정보를 담고 있다.
+4. 그 dict의 키는 PK로 해당 스키마의 PK에 해당하는 테이블을 찾는다.
+	- 테이블에 값이 있는 경우 update
+	- 테이블이 값이 없는 경우  insert
+	- 만약 PK가 없는 스키마의 경우
+		-테이블: data라는 테이블 선언 후 저장. (이름은 바꿀 수 있음)
+		-컬럼:PK를 자동 증가하는 serial 넘버(id)로 생성한다.
+5. 그 PK와 대응하는 value의 key를 찾는다.
+	-value는 dict형으로 저장해야할 자료들을 가지고 있기 때문
+6. 그 key로 되어 있는 테이블을 찾는다.
+	-테이블이 없는 경우 key를 이름으로 한 테이블과 컬럼을 생성한다.
+	-테이블의 구조
+		attr1 (FK)	|	attr2
+		-attr1은 PK인 값과 연결한다.
+		-value의 자료형이 list인 경우 [] 추가
+		-value의 자료형이 dict로 추가적인 자료가 있는 경우
+			attr2는 PK로 설정한다.
+			- 테이블의 구조 
+				attr1 (FK)	|	attr2 (PK)
+6.1 dict인 경우
+	- value의 key를 이름으로 한 테이블과 컬럼을 생성한다.
+	- 테이블의 구조
+		attr2 (FK)	|	attr2_value
+		-attr2는 PK인 attr2 테이블에 FK로 연결한다.
+		-value의 자료형을 확인하고 list인 경우 []를 추가하고,
+		-dict인 경우 재 생성한다.
+		- list 안에 dict인 경우 jsonb로 처리한다.
+
+7. 컬럼에 값 넣기
+	-컬럼이 값인 경우 insert or update
+	-컬럼이 dict인 경우 그대로 
+	-list 안에 dict인 경우 jsonb
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
