@@ -85,7 +85,7 @@ _children = 'children'
 _subscriptions = 'subscriptions'
 _statistics = 'statistics'
 _actions = 'actions'
-_batchNotifications = 'batchNotifications'
+_batchNotifications = 'batchnotifications'
 _requests = 'requests'
 _schedules = 'schedules'
 
@@ -232,19 +232,48 @@ class PostgreDBBinding():
         else:
             self.cur = self.conn.cursor()
 
-        # Create tables
-        # PostgreDBInit
-        self.PostgreTABLE(query=resources_query)
-        self.PostgreTABLE(query=identifiers_query)
-        self.PostgreTABLE(query=srn_query)
-        self.PostgreTABLE(query=children_query)
-        self.PostgreTABLE(query=subscriptions_query)
-        self.PostgreTABLE(query=statistics_query)
-        self.PostgreTABLE(query=actions_query)
-        self.PostgreTABLE(query=batchNotifications_query)
-        self.PostgreTABLE(query=requests_query)
-        self.PostgreTABLE(query=schedules_query)
-    
+        # The database structure that handles data in a bundled manner using the JSONB data type.
+        # Schema:Public - Table: database table
+        All_jsonb = False
+        if All_jsonb == True :
+            # Create tables
+            # PostgreDBInit
+            self.PostgreTABLE(query=table_resources_query)
+            self.PostgreTABLE(query=table_identifiers_query)
+            self.PostgreTABLE(query=table_srn_query)
+            self.PostgreTABLE(query=table_children_query)
+            self.PostgreTABLE(query=table_subscriptions_query)
+            self.PostgreTABLE(query=table_statistics_query)
+            self.PostgreTABLE(query=table_actions_query)
+            self.PostgreTABLE(query=table_batchNotifications_query)
+            self.PostgreTABLE(query=table_requests_query)
+            self.PostgreTABLE(query=table_schedules_query)
+        # Schema: database table -> Table: resource.dict's key 
+        # -> columns: resource.dict's key -> value: resource.dict's value  
+        else :
+            # Create Schema
+            self.PostgreSCHEMA(schema_name=_resources)
+            self.PostgreSCHEMA(schema_name=_identifiers)
+            self.PostgreSCHEMA(schema_name=_srn)
+            self.PostgreSCHEMA(schema_name=_children)
+            self.PostgreSCHEMA(schema_name=_subscriptions)
+            self.PostgreSCHEMA(schema_name=_statistics)
+            self.PostgreSCHEMA(schema_name=_actions)
+            self.PostgreSCHEMA(schema_name=_batchNotifications)
+            self.PostgreSCHEMA(schema_name=_requests)
+            self.PostgreSCHEMA(schema_name=_schedules)
+            # Create Table
+            self.PostgreTABLE(query=schema_resources_query)
+            self.PostgreTABLE(query=schema_identifiers_query)
+            self.PostgreTABLE(query=schema_srn_query)
+            self.PostgreTABLE(query=schema_children_query)
+            self.PostgreTABLE(query=schema_subscriptions_query)
+            self.PostgreTABLE(query=schema_statistics_query)
+            self.PostgreTABLE(query=schema_actions_query)
+            self.PostgreTABLE(query=schema_batchNotifications_query)
+            self.PostgreTABLE(query=schema_requests_query)
+            self.PostgreTABLE(query=schema_schedules_query)
+
     # Terminate PostgreSQL DB Connection
     def __del__(self):
         self.cur.close()
@@ -268,6 +297,7 @@ class PostgreDBBinding():
             return result
         except Exception as e:
             print(f"Error Occured in {msg} Data!", e)
+            #print("query is", query.as_string(self.conn))
 
 
     # create
@@ -280,10 +310,10 @@ class PostgreDBBinding():
     # INSERT INTO {schema_name}.{table_name}({column1}, {column2}, ...) VALUES ({value1}, {value2}, ...)
     def insert(self, table_name:str, values:list, columns:list, schema_name="public"):
         query = sql.SQL("INSERT INTO {field}.{table}({column}) VALUES({value});").format(
-            field=sql.Identifier(schema_name),
-            table=sql.Identifier(table_name),
-            column=sql.SQL(', ').join(map(sql.Identifier, columns)),
-            value=sql.SQL(', ').join(map(sql.Literal, values))
+                field=sql.Identifier(schema_name),
+                table=sql.Identifier(table_name),
+                column=sql.SQL(', ').join(map(sql.Identifier, columns)),
+                value=sql.SQL(', ').join(map(sql.Literal, values))
             )
         print(query.as_string(self.conn))
         self.execute(query=query, msg="INSERT")
@@ -312,24 +342,35 @@ class PostgreDBBinding():
                 SELECT {column1}, {column2}, ... FROM {schema_name}.{table_name}
     '''
 
-    def search(self, query):
-        
-        pass
+    def search(self, table_name, columns, condition, schema_name="public"):
+        query = sql.SQL("SELECT {column} FROM  {schema}.{table};").format(
+                column=sql.SQL(', ').join(map(sql.Identifier, columns)),
+                schema=sql.Identifier(schema_name),
+                table=sql.Identifier(table_name)
+            )
+        try:
+            result = self.execute(query=query, msg='SELECT')
+            #result = self.cur.fetchall()
+        except Exception as e:
+            print(e)
+        return result
 
     # Create Database
     def Create_Database(self, dbname):
-        #autocommit = psycopg.IsolationLevel
-        #print("ISOLATION_LEVEL:", psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-        #self.conn.set_isolation_level(autocommit)
-        #self.conn._set_autocommit
-        """Setting Database option"""
-        query = f'CREATE DATABASE {dbname}'
+        query = sql.SQL("CREATE DATABASE {database};").format(database=sql.Identifier(dbname))
         self.execute(query, 'CREATE')
         """Create Database"""
 
+    def Create_Schema(self, schema_name):
+        query = sql.SQL("CREATE SCHEMA {schema};").format(schema=sql.Identifier(schema_name))
+        self.execute(query, 'CREATE')
+
+    def PostgreSCHEMA(self, schema_name):
+        self.Create_Schema(schema_name=schema_name)
+
     # Create Tables through Constants for database and table names
     # resources, identifiers, children, ..., schedules
-    def PostgreTABLE(self, table_name, schema_name="public", query=""):
+    def PostgreTABLE(self, table_name="", schema_name="public", query=""):
         if query != "":
             self.execute(query, "CREATE")
         else:
@@ -414,6 +455,7 @@ class PostgreDBBinding():
             for table_key, table_value in table_info.items():
 
                 # search, SELECT
+                self.search(table_name=PK, columns=table_key, )
                 # if table exist
                 #   if value exist 
                 #       update
@@ -512,13 +554,14 @@ data_resources = '''{
 thedictionary = {'price money': '$1', 'name': 'Google', 'color': '', 'imgurl': 'http://www.google.com/images/nav_logo225.png', 'charateristics': 'No Description', 'store': 'google'}
 
 #("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
-db = PostgreDBBinding(dbname='school')
+db = PostgreDBBinding(dbname='all_create')
 
-try:
-    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
-    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
-    db.conn.commit()'''
-except Exception as e:
-    print(e)
+#try:
+#    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
+#    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
+#    db.conn.commit()'''
+#except Exception as e:
+#    print(e)
+
 db.__del__
 
