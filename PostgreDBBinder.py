@@ -317,22 +317,31 @@ class PostgreDBBinding():
             )
         print(query.as_string(self.conn))
         self.execute(query=query, msg="INSERT")
-        self.conn.commit()
 
-    """update: row 행 수정
-    UPDATE {schema_name}.{table_name} set {column_name} = '{value}' where {condition}"""
+    def update(self, schema_name, table_name, column, value, PK, PK_value):
+            query = sql.SQL("UPDATE {schema}.{table} SET {column}={value} where {PK} = {PK_value};").format(
+                    schema=sql.Identifier(schema_name),
+                    table=sql.Identifier(table_name),
+                    column=sql.Identifier(column),
+                    value=sql.Literal(value),
+                    PK=sql.Identifier(PK),
+                    PK_value=sql.Literal(PK_value)
+            )
 
-    # update
-    def update(self, schema_name, table_name, columns, values, conditions, query):
-        query = sql.SQL("UPDATE {schema}.{table} set {column} = {value} where %s").format(
-            schema=sql.Identifier(schema_name),
-            table=sql.Identifier(table_name),
-            column=sql.Identifier(columns),
-            value=sql.Literal(values),
-            condition=sql.Literal(conditions)
-        )
-        self.execute(query=query, msg="UPDATE")
-
+            print(query.as_string(self.conn))
+            self.execute(query=query, msg="UPDATE")
+        
+            """    # update
+                def update(self, schema_name, table_name, columns, values, conditions, query):
+                    query = sql.SQL("UPDATE {schema}.{table} SET {column} = {value} where %s").format(
+                        schema=sql.Identifier(schema_name),
+                        table=sql.Identifier(table_name),
+                        column=sql.Identifier(columns),
+                        value=sql.Literal(values),
+                        condition=sql.Literal(conditions)
+                    )
+                    self.execute(query=query, msg="UPDATE")
+            """
     # upsert
     def upsert(self, table_name, columns, values, PK, schema_name="public"):
         # one row upsert
@@ -358,6 +367,14 @@ class PostgreDBBinding():
     def Create_Schema(self, schema_name):
         query = sql.SQL("CREATE SCHEMA {schema};").format(schema=sql.Identifier(schema_name))
         self.execute(query, 'CREATE')
+    
+    def Create_Table(self, schema_name, table_name, column_name, data_type, condition):
+        query = sql.SQL("CREATE TABLE {scheam_table} ( {column} {data_type} {condition});").format(
+            schema_table=sql.Identifier(schema_name, table_name),
+            column=sql.Identifier(column_name),
+            data_type=sql.Identifier(data_type),
+            condition=sql.Identifier(condition)
+        )
 
     def PostgreSCHEMA(self, schema_name):
         self.Create_Schema(schema_name=schema_name)
@@ -581,12 +598,15 @@ db = PostgreDBBinding(dbname='all_create')
 
 sch = "resources"
 tab = "ri"
+val = "5678"
 Pri = "ri"
-val = "1234"
+Pri_val = "1234"
 res = db.hasTable(sch, tab)
-print(res)
-res = db.hasValue(sch, tab, Pri, val)
-print(res)
+print("hasTable:", res)
+res = db.hasValue(sch, tab, Pri, Pri_val)
+print("hasValue:", res)
+res = db.update(sch, tab, tab, val, Pri, Pri_val)
+print("update:", res)
 #try:
 #    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
 #    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
