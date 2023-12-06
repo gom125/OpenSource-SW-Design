@@ -319,41 +319,35 @@ class PostgreDBBinding():
         self.execute(query=query, msg="INSERT")
         self.conn.commit()
 
-    # update
-    def update(self, table_name, columns, values, condition, query):
-        query = f"UPDATE {table_name}" 
-        query += f'SET '
+    """update: row 행 수정
+    UPDATE {schema_name}.{table_name} set {column_name} = '{value}' where {condition}"""
 
-        pass
+    # update
+    def update(self, schema_name, table_name, columns, values, conditions, query):
+        query = sql.SQL("UPDATE {schema}.{table} set {column} = {value} where %s").format(
+            schema=sql.Identifier(schema_name),
+            table=sql.Identifier(table_name),
+            column=sql.Identifier(columns),
+            value=sql.Literal(values),
+            condition=sql.Literal(conditions)
+        )
+        self.execute(query=query, msg="UPDATE")
 
     # upsert
-    def upsert(self, query):
-
-        pass
-
-    '''select: 
-            SELECT {column_name} FROM {schema_name}.{table_name} WHERE {condition} order by {column_name2} desc/asc
-            condition: {condition} AND {condition} OR {condition} ...
-            order by desc(내림차순), asc(오름차순)으로 출력
-
-            table:
-                SELECT * FROM {schema_name}.{table_name}
-            column:
-                SELECT {column1}, {column2}, ... FROM {schema_name}.{table_name}
-    '''
-
-    def search(self, table_name, columns, condition, schema_name="public"):
-        query = sql.SQL("SELECT {column} FROM  {schema}.{table};").format(
-                column=sql.SQL(', ').join(map(sql.Identifier, columns)),
-                schema=sql.Identifier(schema_name),
-                table=sql.Identifier(table_name)
-            )
-        try:
-            result = self.execute(query=query, msg='SELECT')
-            #result = self.cur.fetchall()
-        except Exception as e:
-            print(e)
-        return result
+    def upsert(self, table_name, columns, values, PK, schema_name="public"):
+        # one row upsert
+        query = sql.SQL("INSERT INTO {} ({column}) VALUES ({value}) ON CONFLICT ({PK}) DO UPDATE SET {update_condition};").format(
+            sql.Identifier(schema_name, table_name),
+            column=sql.SQL(', ').join(map(sql.Identifier, columns)),
+            value=sql.SQL(', ').join(map(sql.Identifier, values)),
+            PK=sql.Identifier(PK),
+            #update=sql.SQL(', ').join(map(sql.SQL('=').join(map(sql.Identifier(columns), sql.Identifier(values)))))
+        )
+        # "column"='value',
+        # "column" 'value       | sql.Identifier(columns)
+    
+    def search(self, table_name, condition, schema_name="public"):
+        query= sql.SQL()
 
     # Create Database
     def Create_Database(self, dbname):
@@ -375,16 +369,15 @@ class PostgreDBBinding():
             self.execute(query, "CREATE")
         else:
             self.execute(table_name, "CREATE")
-
     
     def checkDataType(self, value):
         # Presume data_type 
         if not isinstance(value, dict):
-            if all(isinstance(elem, int) for elem in value):
+            if isinstance(value, int):
                 data_type = "INTEGER"
-            elif all(isinstance(elem, bool) for elem in value):
+            elif isinstance(value, bool):
                 data_type = "BOOLEAN"
-            elif all(isinstance(elem, float) for elem in value):
+            elif isinstance(value, float):
                 data_type = "REAL"
             else:
                 data_type = "text"
@@ -406,11 +399,11 @@ class PostgreDBBinding():
         elif schema_name == _subscriptions:
             return "ri"
         elif schema_name == _statistics:
-            return ""
+            return "id"
         elif schema_name == _actions:
             return "ri"
         elif schema_name == _batchNotifications:
-            return ""
+            return "id"
         elif schema_name == _requests:
             return "ts"
         elif schema_name == _schedules:
@@ -421,6 +414,30 @@ class PostgreDBBinding():
             except Exception as e:   
                 print(e)
             return "error"
+        
+    def hasTable(self, schema_name, table_name):
+        query=sql.SQL("SELECT EXISTS ( SELECT 1 FROM {} WHERE table_schema = {schema} AND table_name = {table} );").format(
+            sql.Identifier("information_schema", "tables"),
+            schema=sql.Literal(schema_name),
+            table=sql.Literal(table_name)
+        )
+        result = self.execute(query=query, msg="SELECT")
+        # result's type is list, [(True,)]
+        if True in result[0]:
+            return True
+        return False
+        
+    def hasValue(self, schema_name, table_name, PK_col, PK_value):
+        query= sql.SQL("SELECT EXISTS ( SELECT 1 FROM {schema_table} WHERE {PK} = {value});").format(
+            schema_table=sql.Identifier(schema_name, table_name),
+            PK=sql.Identifier(PK_col),
+            value=sql.Literal(PK_value)
+        )
+        result = self.execute(query=query, msg="SELECT")
+        # result's type is list, [(True,)]
+        if True in result[0]:
+            return True
+        return False
 
     def Create_Table_Jsonb(self, data:dict):
         self.schema_name:list = data.keys() 
@@ -440,12 +457,13 @@ class PostgreDBBinding():
         # schema
         # keys() return data type is list
         self.schema_name = data.keys() 
+        self.schema_name = self.schema_name[0]
         # schema's value: dict, {PK : table}
         # PK_info is dict
-        PK_info = data.get(self.schema_name[0])
+        PK_info = data.get(self.schema_name)
         # PK_info_key is dict's key
         PK_info_key = PK_info.keys()
-        PK = self.WhoPK(self.schema_name[0])
+        PK = self.WhoPK(self.schema_name)
         if PK == "error":
             return Exception("Schema name is incorrect")
         
@@ -455,15 +473,20 @@ class PostgreDBBinding():
             for table_key, table_value in table_info.items():
 
                 # search, SELECT
-                self.search(table_name=PK, columns=table_key, )
                 # if table exist
+                if self.hasTable(self.schema_name, PK):
                 #   if value exist 
+                    if self.hasValue(self.schema_name, self.table_name):
                 #       update
+                        self.update()
                 #   else
+                    else:
                 #       insert
+                        self.insert()
                 # else
+                else :
+                    self.create_table()
                 #   create and insert
-                pass
 
         query = ""
 
@@ -556,6 +579,14 @@ thedictionary = {'price money': '$1', 'name': 'Google', 'color': '', 'imgurl': '
 #("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
 db = PostgreDBBinding(dbname='all_create')
 
+sch = "resources"
+tab = "ri"
+Pri = "ri"
+val = "1234"
+res = db.hasTable(sch, tab)
+print(res)
+res = db.hasValue(sch, tab, Pri, val)
+print(res)
 #try:
 #    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
 #    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
