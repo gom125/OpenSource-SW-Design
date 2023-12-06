@@ -72,6 +72,8 @@ import psycopg
 from psycopg.pq import Escaping
 from psycopg.types.json import Jsonb
 from psycopg import sql
+
+import datetime
 #import psycopg2
 #import json
 from PostgreDBInit import *
@@ -304,11 +306,11 @@ class PostgreDBBinding():
     # CREATE DATABASE {database_name}
     # CREATE TABLE {table_name}
     def create(self, query):
-        self.execute(query=query, msg='CREATE')
+        self.execute(query, 'CREATE')
 
     # insert
     # INSERT INTO {schema_name}.{table_name}({column1}, {column2}, ...) VALUES ({value1}, {value2}, ...)
-    def insert(self, table_name:str, values:list, columns:list, schema_name="public"):
+    def insert(self, schema_name, table_name, columns, values):
         query = sql.SQL("INSERT INTO {field}.{table}({column}) VALUES({value});").format(
                 field=sql.Identifier(schema_name),
                 table=sql.Identifier(table_name),
@@ -329,7 +331,7 @@ class PostgreDBBinding():
             )
 
             print(query.as_string(self.conn))
-            self.execute(query=query, msg="UPDATE")
+            self.execute(query, "UPDATE")
         
             """    # update
                 def update(self, schema_name, table_name, columns, values, conditions, query):
@@ -343,6 +345,18 @@ class PostgreDBBinding():
                     self.execute(query=query, msg="UPDATE")
             """
     # upsert
+    def upsert(self, schema_name:str, table_name:str, column:str, value:str, pk):
+        query = sql.SQL("INSERT INTO {schema}.{table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={value};").format(
+            schema=sql.Identifier(schema_name),
+            table=sql.Identifier(table_name),
+            column=sql.Identifier(column),
+            value=sql.Literal(value),
+            pk=sql.Identifier(pk),
+        )
+
+        print(query.as_string(self.conn))
+        self.execute(query=query, msg="UPSERT")
+    """
     def upsert(self, table_name, columns, values, PK, schema_name="public"):
         # one row upsert
         query = sql.SQL("INSERT INTO {} ({column}) VALUES ({value}) ON CONFLICT ({PK}) DO UPDATE SET {update_condition};").format(
@@ -353,7 +367,7 @@ class PostgreDBBinding():
             #update=sql.SQL(', ').join(map(sql.SQL('=').join(map(sql.Identifier(columns), sql.Identifier(values)))))
         )
         # "column"='value',
-        # "column" 'value       | sql.Identifier(columns)
+        # "column" 'value       | sql.Identifier(columns)"""
     
     def search(self, table_name, condition, schema_name="public"):
         query= sql.SQL()
@@ -368,16 +382,37 @@ class PostgreDBBinding():
         query = sql.SQL("CREATE SCHEMA {schema};").format(schema=sql.Identifier(schema_name))
         self.execute(query, 'CREATE')
     
-    def Create_Table(self, schema_name, table_name, column_name, data_type, condition):
-        query = sql.SQL("CREATE TABLE {scheam_table} ( {column} {data_type} {condition});").format(
+    # Create a table by the design of the database 
+    # First column is FK(PK of ACME's database table)
+    # If second column's data type is dict:
+    #   Second column is PK
+    #  
+    #
+    def Create_Table(self, schema_name, table_name, PK_column, PK_type, PK_condition, column, data_type, condition):
+        query_table = sql.SQL("CREATE TABLE {schema_table} ( ").format(
             schema_table=sql.Identifier(schema_name, table_name),
-            column=sql.Identifier(column_name),
+        )
+        query_column1 = sql.SQL("{column} {data_type} {condition}, ").format(
+            column=sql.Identifier(PK_column),
+            data_type=sql.Identifier(PK_type),
+            condition=sql.Identifier(PK_condition)
+        )
+        query_column2 = sql.SQL("{column} {data_type} {condition}, ").format(
+            column=sql.Identifier(column),
             data_type=sql.Identifier(data_type),
             condition=sql.Identifier(condition)
         )
+        query_constraint = sql.SQL("FOREIGN KEY ({column}) REFERENCES {schema_PK_table}({PK_col}) );").format(
+            column=sql.Identifier(PK_column),
+            schema_PK_table=sql.Identifier(schema_name, PK_column),
+            PK_col=sql.Identifier(PK_column)
+        )
+        query = sql.Composed([query_table, query_column1, query_column2, query_constraint])
+        self.execute(query, "CREATE")
+
 
     def PostgreSCHEMA(self, schema_name):
-        self.Create_Schema(schema_name=schema_name)
+        self.Create_Schema(schema_name)
 
     # Create Tables through Constants for database and table names
     # resources, identifiers, children, ..., schedules
@@ -389,42 +424,61 @@ class PostgreDBBinding():
     
     def checkDataType(self, value):
         # Presume data_type 
-        if not isinstance(value, dict):
-            if isinstance(value, int):
-                data_type = "INTEGER"
-            elif isinstance(value, bool):
-                data_type = "BOOLEAN"
-            elif isinstance(value, float):
-                data_type = "REAL"
-            else:
+        # dict  -> new table
+        if isinstance(value, dict):
+            return "dict"
+        # list  -> re checkDataType
+        if isinstance(value, list):
+            if isinstance(value[0], str):
                 data_type = "text"
-            if isinstance(value, list):
-                data_type += "[]"
-        else:
-            data_type = "DICT"
+            elif isinstance(value[0], int):
+                data_type = "integer"
+            elif isinstance(value[0], bool):
+                data_type = "boolean"
+            elif isinstance(value[0], float):
+                data_type = "real"
+            elif isinstance(value[0], dict):
+                data_type = "jsonb"
+            else:
+                return "error"
+            data_type += []
+        else :
+            if isinstance(value[0], str):
+                data_type = "text"
+            elif isinstance(value[0], int):
+                data_type = "integer"
+            elif isinstance(value[0], bool):
+                data_type = "boolean"
+            elif isinstance(value[0], float):
+                data_type = "real"
+            elif isinstance(value[0], dict):
+                data_type = "jsonb"
+            else:
+                return "error"
         return data_type
-    
+                
+    # PostgreDBInit.py have PK information
     def WhoPK(self, schema_name):
         if schema_name == _resources:
-            return "ri"
+            return PK_resources
         elif schema_name == _identifiers:
-            return "ri"
+            return PK_identifiers
         elif schema_name == _srn:
-            return "srn"
+            return PK_srn
         elif schema_name == _children:
-            return "ri"
+            return PK_children
         elif schema_name == _subscriptions:
-            return "ri"
+            return PK_subscriptions
         elif schema_name == _statistics:
-            return "id"
+            return PK_statistics
         elif schema_name == _actions:
-            return "ri"
+            return PK_actions
         elif schema_name == _batchNotifications:
-            return "id"
+            return PK_batchNotifications
         elif schema_name == _requests:
-            return "ts"
+            return PK_requests
         elif schema_name == _schedules:
-            return "ri"
+            return PK_schedules
         else:
             try:
                 raise Exception("Schema_name or table_name is incorrect!")  
@@ -466,44 +520,66 @@ class PostgreDBBinding():
         #val = [PK_info_key, [Jsonb(self.json_data)]] 
         self.insert(self, table_name = self.schema_name[0], values= [PK_info_key, Jsonb(self.json_data)], columns="", schema_name="public")
         #self.insert(self, table_name = self.schema_name[0], values= val, columns="", schema_name="public")
-        
+
+    def settingParm(PK, PK_value, column_name, column_value):
+        if column_name == PK:
+            columns = [PK]
+            values = [PK_value]
+        else :
+            columns = [PK, column_name]
+            values = [PK_value, column_value]
+        return columns, values
+
+    def Chain_Create_Table(self, schema_name, table_info:dict):
+        # Create_All_Table -> Chain_Create_Table(schema_name, column_value)
+        # Chain_Create_Table(schema_name, sub_table_info) -> Chain_Create_Table(schema_name)
+        pass
 
     # createResource()
     # 테이블이랑 컬럼 생성
     def Create_All_Table(self, data:dict):
         # schema
         # keys() return data type is list
-        self.schema_name = data.keys() 
-        self.schema_name = self.schema_name[0]
-        # schema's value: dict, {PK : table}
-        # PK_info is dict
-        PK_info = data.get(self.schema_name)
-        # PK_info_key is dict's key
-        PK_info_key = PK_info.keys()
-        PK = self.WhoPK(self.schema_name)
+        schema_name:list = data.keys()
+        schema_name:str = schema_name[0]
+        update_data:dict = data.get(schema_name)
+        PK_values:list = update_data.keys()
+
+        PK, PK_type, PK_condition = self.WhoPK(schema_name)
         if PK == "error":
             return Exception("Schema name is incorrect")
         
-        for key in PK_info_key:
+        for PK_val in PK_values:
             # table_info is dict
-            table_info = PK_info.get(key)
-            for table_key, table_value in table_info.items():
-
-                # search, SELECT
-                # if table exist
-                if self.hasTable(self.schema_name, PK):
-                #   if value exist 
-                    if self.hasValue(self.schema_name, self.table_name):
-                #       update
-                        self.update()
-                #   else
+            table_info:dict = update_data.get(PK_val)
+            #self.Chain_Create_Table(schema_name, table_info)
+            for table_name, column_value in table_info.items():
+                # column name equals table name
+                column_name = table_name
+                # Search and upsert ...
+                if self.hasTable(schema_name, table_name):
+                    if self.hasValue(schema_name, table_name):
+                        self.update(schema_name, table_name, column_name, column_value, PK, PK_val)
                     else:
-                #       insert
-                        self.insert()
-                # else
+                        columns, values = self.settingParm(PK, PK_val, column_name, column_value)
+                        self.insert(schema_name, table_name, columns, values)
+                # Table is not exists
                 else :
-                    self.create_table()
-                #   create and insert
+                    data_type = self.checkDataType(column_value)
+                    if data_type == "error":
+                        print(Exception("I don't know value's data type!!!"))
+                    
+                    condition = ""
+                    if data_type == "dict":
+                        condition = "PRIMARY KEY"
+                        self.Create_Table(schema_name, table_name, PK, PK_type, PK_condition, column_name, data_type, condition)
+                        # column_value:dict
+                        self.Chain_Create_Table(schema_name, column_value)                      
+                    else :
+                    # Create table and insert data ... 
+                        self.Create_Table(schema_name, table_name, PK, PK_type, PK_condition, column_name, data_type, condition)
+                        columns, values = self.settingParm(PK, PK_val, column_name, column_value)
+                        self.insert(schema_name, table_name, columns, values)
 
         query = ""
 
@@ -605,8 +681,9 @@ res = db.hasTable(sch, tab)
 print("hasTable:", res)
 res = db.hasValue(sch, tab, Pri, Pri_val)
 print("hasValue:", res)
-res = db.update(sch, tab, tab, val, Pri, Pri_val)
-print("update:", res)
+#res = db.update(sch, tab, tab, val, Pri, Pri_val)
+#print("update:", res)
+res = db.upsert(sch, tab, )
 #try:
 #    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
 #    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
