@@ -345,29 +345,18 @@ class PostgreDBBinding():
                     self.execute(query=query, msg="UPDATE")
             """
     # upsert
-    def upsert(self, schema_name:str, table_name:str, column:str, value:str, pk):
-        query = sql.SQL("INSERT INTO {schema}.{table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={value};").format(
-            schema=sql.Identifier(schema_name),
-            table=sql.Identifier(table_name),
-            column=sql.Identifier(column),
-            value=sql.Literal(value),
-            pk=sql.Identifier(pk),
+    def upsert(self, schema_name, table_name, column, value, update_value, PK):
+        query = sql.SQL("INSERT INTO {schema}.{table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={new_val};").format(
+                schema=sql.Identifier(schema_name),
+                table=sql.Identifier(table_name),
+                column=sql.Identifier(column),
+                value=sql.Literal(value),
+                new_val=sql.Literal(update_value),
+                pk=sql.Identifier(PK),
         )
 
         print(query.as_string(self.conn))
         self.execute(query=query, msg="UPSERT")
-    """
-    def upsert(self, table_name, columns, values, PK, schema_name="public"):
-        # one row upsert
-        query = sql.SQL("INSERT INTO {} ({column}) VALUES ({value}) ON CONFLICT ({PK}) DO UPDATE SET {update_condition};").format(
-            sql.Identifier(schema_name, table_name),
-            column=sql.SQL(', ').join(map(sql.Identifier, columns)),
-            value=sql.SQL(', ').join(map(sql.Identifier, values)),
-            PK=sql.Identifier(PK),
-            #update=sql.SQL(', ').join(map(sql.SQL('=').join(map(sql.Identifier(columns), sql.Identifier(values)))))
-        )
-        # "column"='value',
-        # "column" 'value       | sql.Identifier(columns)"""
     
     def search(self, table_name, condition, schema_name="public"):
         query= sql.SQL()
@@ -530,38 +519,18 @@ class PostgreDBBinding():
             values = [PK_value, column_value]
         return columns, values
 
-    def Chain_Create_Table(self, schema_name, table_info:dict):
+    def Chain_Create_Table(self, schema_name, PK_value, table_info:dict, PK, PK_type, PK_condition):
         # Create_All_Table -> Chain_Create_Table(schema_name, column_value)
         # Chain_Create_Table(schema_name, sub_table_info) -> Chain_Create_Table(schema_name)
-        pass
-
-    # createResource()
-    # 테이블이랑 컬럼 생성
-    def Create_All_Table(self, data:dict):
-        # schema
-        # keys() return data type is list
-        schema_name:list = data.keys()
-        schema_name:str = schema_name[0]
-        update_data:dict = data.get(schema_name)
-        PK_values:list = update_data.keys()
-
-        PK, PK_type, PK_condition = self.WhoPK(schema_name)
-        if PK == "error":
-            return Exception("Schema name is incorrect")
-        
-        for PK_val in PK_values:
-            # table_info is dict
-            table_info:dict = update_data.get(PK_val)
-            #self.Chain_Create_Table(schema_name, table_info)
-            for table_name, column_value in table_info.items():
+        for table_name, column_value in table_info.items():
                 # column name equals table name
                 column_name = table_name
                 # Search and upsert ...
                 if self.hasTable(schema_name, table_name):
                     if self.hasValue(schema_name, table_name):
-                        self.update(schema_name, table_name, column_name, column_value, PK, PK_val)
+                        self.update(schema_name, table_name, column_name, column_value, PK, PK_value)
                     else:
-                        columns, values = self.settingParm(PK, PK_val, column_name, column_value)
+                        columns, values = self.settingParm(PK, PK_value, column_name, column_value)
                         self.insert(schema_name, table_name, columns, values)
                 # Table is not exists
                 else :
@@ -573,19 +542,41 @@ class PostgreDBBinding():
                     if data_type == "dict":
                         condition = "PRIMARY KEY"
                         self.Create_Table(schema_name, table_name, PK, PK_type, PK_condition, column_name, data_type, condition)
-                        # column_value:dict
-                        self.Chain_Create_Table(schema_name, column_value)                      
+                        #column_value:dict
+                        # 그림은 여기서부터 시작한다고 생각
+                        # 관점 바꿔서 생각해
+                        sub_PK_values = column_value.keys()
+                        for sub_PK_val in sub_PK_values:
+                            columns, values = self.settingParm(PK, PK_value, column_name, column_value)
+                            self.insert(schema_name, table_name, columns, values)
+
+                            sub_table_info:dict = column_value.get(sub_PK_val)
+                            self.Chain_Create_Table(schema_name, column_value)
                     else :
                     # Create table and insert data ... 
                         self.Create_Table(schema_name, table_name, PK, PK_type, PK_condition, column_name, data_type, condition)
-                        columns, values = self.settingParm(PK, PK_val, column_name, column_value)
+                        columns, values = self.settingParm(PK, PK_value, column_name, column_value)
                         self.insert(schema_name, table_name, columns, values)
 
-        query = ""
+    # createResource()
+    # 테이블이랑 컬럼 생성
+    def Create_All_Table(self, data:dict):
+        # schema
+        # keys() return data type is list
+        schema_name:list = data.keys()
+        schema_name:str = schema_name[0]
+        update_data:dict = data.get(schema_name)
+        PK_values:list = update_data.keys()
+        
+        PK, PK_type, PK_condition = self.WhoPK(schema_name)
+        if PK == "error":
+            return Exception("Schema name is incorrect")
 
-        print("query: ", query)
-        self.execute(query, 'CREATE')
-        self.conn.commit()
+        for PK_val in PK_values:
+            # table_info is dict
+            table_info:dict = update_data.get(PK_val)
+            self.Chain_Create_Table(schema_name, PK_val, table_info, PK, PK_type, PK_condition)
+            
         
     # createResource()
     # 이미 생성된 테이블에 추가하는 방식
