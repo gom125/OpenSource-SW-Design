@@ -1,6 +1,18 @@
 ###############################
 # Using Jsonb Version
 #
+# PK, PK data type, PK condition
+PK_resources= ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_identifiers = ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_srn = ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_children = ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_subscriptions = ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_statistics = ['id', 'serial', 'PRIMARY KEY']
+PK_actions = ['ri', 'varchar(255)', 'PRIMARY KEY']
+PK_batchNotifications = ['id', 'serial', 'PRIMARY KEY']
+PK_requests = ['ts', 'real', 'PRIMARY KEY']
+PK_schedules = ['ri', 'varchar(255)', 'PRIMARY KEY']
+
 
 table_resources_query = """
 CREATE TABLE IF NOT EXISTS resources (
@@ -69,7 +81,7 @@ CREATE TABLE IF NOT EXISTS batchnotifications (
 	id serial PRIMARY KEY,
 	ri varchar(255),
 	nu varchar(255),
-	tstamp varchar(255),
+	tstamp timstamp,
 	request text
 );"""
 
