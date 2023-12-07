@@ -487,13 +487,23 @@ class PostgreDBBinding():
             return True
         return False
         
-    def hasValue(self, schema_name, table_name, column_name, column_value):
-        query= sql.SQL("SELECT EXISTS ( SELECT 1 FROM {schema_table} WHERE {column} = {value});").format(
+    def hasValue(self, schema_name, table_name, column_name1, column_value1, column_name2="", column_value2=""):
+        # PK search
+        query= sql.SQL("SELECT EXISTS ( SELECT 1 FROM {schema_table} WHERE {column} = {value}").format(
             schema_table=sql.Identifier(schema_name, table_name),
-            column=sql.Identifier(column_name),
-            value=sql.Literal(column_value)
+            column=sql.Identifier(column_name1),
+            value=sql.Literal(column_value1)
         )
-        result = self.execute(query=query, msg="SELECT")
+        # attr search
+        if column_name2 != "" and column_value2 != "":
+            query2= sql.SQL("AND {column} = {value});").format(
+                column=sql.Identifier(column_name2),
+                value=sql.Literal(column_value2)
+            )
+        else:
+            query2= sql.SQL(");")
+        
+        result = self.execute(query=sql.Composed([query, query2]), msg="SELECT")
         # result's type is list, [(True,)]
         if True in result[0]:
             return True
@@ -545,11 +555,11 @@ class PostgreDBBinding():
                             if self.hasTable(schema_name, table_name):
                                 # Exist
                                 # Does the value exist?
-                                if self.hasValue(schema_name, table_name, PK_name, PK_value):
+                                if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, sub_column_value):
                                     # Exist
                                     # table_name---------------------
-                                    # "PK_name" |   column_name     |
-                                    # "PK_value"| sub_column_value  |
+                                    # "PK_name" |  "column_name"    |
+                                    # "PK_value"| "sub_column_value"|
                                     # -------------------------------
                                     # update data
                                     self.update(schema_name, table_name, column_name, sub_column_value, PK_name, PK_value)
@@ -563,22 +573,26 @@ class PostgreDBBinding():
                                     columns, values = self.settingParm(PK_name, PK_value, column_name, sub_column_value)
                                     self.insert(schema_name, table_name, columns, values)
                                 # Create sub table using sub_table_info
+                                # table_name---------------------  ->   sub_column_value---------------------
+                                # PK_name   |   column_name     |       column_name     | sub_column_value  |
+                                # PK_value  | sub_column_value  |          -            |   -               |
+                                # -------------------------------       -------------------------------------
                                 ### initial function ###
                                 #elf.Chain_Create_Table(schema_name, PK_value  , table_info    , PK_name    , PK_type  , PK_condition)
                                 ### recursive function ###
-                                #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition) 
+                                #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition)
                                 self.Chain_Create_Table(schema_name, sub_PK_val, column_value, column_name, data_type, condition)
                             else:
                                 # Create Table
                                 # table_name---------------------
-                                # PK        |   column_name     |
+                                # PK_name   |   column_name     |
                                 # -         |   -               |
                                 # -------------------------------
                                 self.Create_Table(schema_name, table_name, PK_name, PK_type, PK_condition, column_name, data_type, condition)
                                 
                                 # Insert Value
                                 # table_name---------------------
-                                # PK        |   column_name     |
+                                # PK_name   |   column_name     |
                                 # PK_value  |   sub_column_value|
                                 # -------------------------------
                                 columns, values = self.settingParm(PK_name, PK_value, column_name, sub_column_value)
@@ -597,11 +611,11 @@ class PostgreDBBinding():
                     if self.hasTable(schema_name, table_name):
                         # Exist
                         # Does the value exist?
-                        if self.hasValue(schema_name, table_name, PK_name, PK_value):
+                        if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, column_value):
                             # Exist
                             # table_name---------------------
-                            # "PK_name" |   column_name     |
-                            # "PK_value"|   column_value    |
+                            # "PK_name" |  "column_name"    |
+                            # "PK_value"|  "column_value"   |
                             # -------------------------------
                             self.update(schema_name, table_name, column_name, column_name, PK_name, PK_value)
                         else:
