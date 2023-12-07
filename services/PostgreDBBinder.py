@@ -1,73 +1,4 @@
 
-"""
-    Query:        
-        하위 파일:
-            .
-            ex) 스키마.테이블
-                테이블.컬럼
-        종료:
-            ;
-        트랜잭션:
-            begin; end;
-        create:
-            User:
-                CREATE USER {user_name} PASSWORD {password}
-            SUPER User:
-                CREATE USER {user_name} PASSWORD {password} SUPERUSER
-            권한 부여 ALTER에 있음
-
-            Database:
-                CREATE DATABASE {database_name}
-            
-            TABLE: ({schema_name}. 생략시 public으로 자동 설정)
-                CREATE TABLE {schema_name}.{table_name} (
-                    {field_name1} {field_type} {condition},
-                    {field_name2} {field_type} {condition},
-                    ...
-                )
-
-        insert: row 행 추가
-            INSERT INTO {schema_name}.{table_name}({column1}, {column2}, ...) VALUES ({value1}, {value2}, ...)
-            value:str
-            ex: '1', '{"ri":"19011000", "srn":123456779"}'
-        
-        update: row 행 수정
-            UPDATE {schema_name}.{table_name} set {column_name} = '{value}' where {condition}
-
-        upsert: insert + update
-
-        select: 
-            SELECT {column_name} FROM {schema_name}.{table_name} WHERE {condition} order by {column_name2} desc/asc
-            condition: {condition} AND {condition} OR {condition} ...
-            order by desc(내림차순), asc(오름차순)으로 출력
-
-            table:
-                SELECT * FROM {schema_name}.{table_name}
-            column:
-                SELECT {column1}, {column2}, ... FROM {schema_name}.{table_name}
-
-        delete:
-            DELETE FROM {schema_name}.{table_name} WHERE {condition}
-
-        alter:
-            Autho        
-
-            table name:
-                ALTER TABLE {schema_name}.{table_name} RENAME TO {renamed_table}
-            column name:
-                ALTER TABLE {schema_name}.{table_name} RENAME COLUMN {column_name} to {renamed_column}
-            data type:
-                    ALTER {schema_name}.{table_name} ALTER COLUMN {column_name} TYPE {data_type} 
-
-
-        #=================================#
-        데이터 베이스 확인: \l
-            SELECT * FROM pg_catalog.pg_namespace;
-        스키마 확인: \dn
-            SELECT * FROM_catalog.pg_tables;
-        #=================================#
-"""
-
 import psycopg
 from psycopg.pq import Escaping
 from psycopg.types.json import Jsonb
@@ -76,6 +7,8 @@ from psycopg import sql
 #import datetime
 import json
 import os
+from psycopg.pq import Escaping
+
 #import psycopg2
 #import json
 from PostgreDBInit import *
@@ -118,19 +51,6 @@ class PostgreDBBinding():
 		'cacheSize',    # TinyDB에서 쿼리를 캐시에 저장할 크기
 		'writeDelay',
 		'maxRequests',
-		# 동기화 문제를 위한 초기 설정
-        # PostgreSQL 테이블 Lock 문제 논의 필요
-        # PostgreSQL은 db에 연결하기 때문.
-		'lockResources',
-		'lockIdentifiers',
-		'lockChildResources',
-		'lockStructuredIDs',
-		'lockSubscriptions',
-		'lockBatchNotifications',
-		'lockStatistics',
-		'lockActions',
-		'lockRequests',
-		'lockSchedules',
 		# json 파일 for PostgreSQL
 		'fileResources',
 		'fileIdentifiers',
@@ -140,33 +60,6 @@ class PostgreDBBinding():
 		'fileActions',
 		'fileRequests',
 		'fileSchedules',
-		# ACME 리소스
-		'dbResources',
-		'dbIdentifiers', 		
-		'dbSubscriptions', 	
-		'dbBatchNotifications',
-		'dbStatistics',
-		'dbActions',	
-        'dbRequests',	
-        'dbSchedules',	    
-		# 테이블 생성
-		'tabResources',
-		'tabIdentifiers',
-		'tabChildResources',
-		'tabStructuredIDs',
-		'tabSubscriptions',
-		'tabBatchNotifications',
-		'tabStatistics',
-		'tabActions',
-		'tabRequests',
-		# TinyDB 쿼리문
-		'resourceQuery',
-		'identifierQuery',
-		'subscriptionQuery',
-		'batchNotificationQuery',
-		'actionsQuery',
-		'requestsQuery',
-		'schedulesQuery',
 	)
 
     # Connect PostgresDB 
@@ -298,6 +191,7 @@ class PostgreDBBinding():
                 value=sql.SQL(', ').join(map(sql.Literal, values))
             )
         print(query.as_string(self.conn))
+        print()
         self.execute(query=query, msg="INSERT")
 
     def update(self, schema_name, table_name, column, value, PK, PK_value):
@@ -311,24 +205,13 @@ class PostgreDBBinding():
             )
 
             print(query.as_string(self.conn))
+            print()
             self.execute(query, "UPDATE")
-        
-            """    # update
-                def update(self, schema_name, table_name, columns, values, conditions, query):
-                    query = sql.SQL("UPDATE {schema}.{table} SET {column} = {value} where %s").format(
-                        schema=sql.Identifier(schema_name),
-                        table=sql.Identifier(table_name),
-                        column=sql.Identifier(columns),
-                        value=sql.Literal(values),
-                        condition=sql.Literal(conditions)
-                    )
-                    self.execute(query=query, msg="UPDATE")
-            """
+
     # upsert
     def upsert(self, schema_name, table_name, column, value, update_value, PK):
-        query = sql.SQL("INSERT INTO {schema}.{table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={new_val};").format(
-                schema=sql.Identifier(schema_name),
-                table=sql.Identifier(table_name),
+        query = sql.SQL("INSERT INTO {schema_table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={new_val};").format(
+                schema_table=sql.Identifier(schema_name, table_name),
                 column=sql.Identifier(column),
                 value=sql.Literal(value),
                 new_val=sql.Literal(update_value),
@@ -338,6 +221,16 @@ class PostgreDBBinding():
         print(query.as_string(self.conn))
         self.execute(query=query, msg="UPSERT")
     
+    def delete(self, schema_name, table_name, column, value):
+        query = sql.SQL("DELETE FROM {schema}.{table} WHERE {column}={value};").format(
+                schema=sql.Identifier(schema_name),
+                column=sql.Identifier(column),
+                table=sql.Identifier(table_name),
+                value=sql.Literal(value),
+        )
+        print(query.as_string(self.conn))
+        self.execute(query=query, msg="DELETE")
+
     def search(self, table_name, condition, schema_name="public"):
         query= sql.SQL()
 
@@ -361,22 +254,24 @@ class PostgreDBBinding():
         query_table = sql.SQL("CREATE TABLE {schema_table} ( ").format(
             schema_table=sql.Identifier(schema_name, table_name),
         )
-        query_column1 = sql.SQL("{column} {data_type} {condition}, ").format(
+        query_column1 = sql.SQL("{column} {data_type} {constraint}, ").format(
             column=sql.Identifier(PK_column),
-            data_type=sql.Identifier(PK_type),
-            condition=sql.Identifier(PK_condition)
+            data_type=sql.SQL(PK_type),
+            constraint=sql.SQL(PK_condition) if condition else sql.SQL("")
         )
-        query_column2 = sql.SQL("{column} {data_type} {condition}, ").format(
+        query_column2 = sql.SQL("{column} {data_type} {constraint}, ").format(
             column=sql.Identifier(column),
-            data_type=sql.Identifier(data_type),
-            condition=sql.Identifier(condition)
+            data_type=sql.SQL(data_type),
+            constraint=sql.SQL(condition) if condition else sql.SQL("")
         )
         query_constraint = sql.SQL("FOREIGN KEY ({column}) REFERENCES {schema_PK_table}({PK_col}) );").format(
-            column=sql.Identifier(column),
+            column=sql.Identifier(PK_column),
             schema_PK_table=sql.Identifier(schema_name, PK_column),
             PK_col=sql.Identifier(PK_column)
         )
         query = sql.Composed([query_table, query_column1, query_column2, query_constraint])
+        print(query.as_string(self.conn))
+        print()
         self.execute(query, "CREATE")
 
 
@@ -394,33 +289,38 @@ class PostgreDBBinding():
     def checkDataType(self, value):
         # Presume data_type 
         # dict  -> new table
+        print("checkDataType(value):", type(value), value)
         if isinstance(value, dict):
             return "dict"
+        if value == None:
+            return "error"
         # list  -> re checkDataType
         if isinstance(value, list):
+            if len(value) == 0 :
+                return "text[]"
             if isinstance(value[0], str):
                 data_type = "text"
-            elif isinstance(value[0], int):
-                data_type = "integer"
             elif isinstance(value[0], bool):
                 data_type = "boolean"
+            elif isinstance(value[0], int):
+                data_type = "integer"
             elif isinstance(value[0], float):
                 data_type = "real"
             elif isinstance(value[0], dict):
-                data_type = "jsonb"
+                return "jsonb"
             else:
                 return "error"
-            data_type += []
+            data_type += "[]"
         else :
-            if isinstance(value[0], str):
+            if isinstance(value, str):
                 data_type = "text"
-            elif isinstance(value[0], int):
-                data_type = "integer"
-            elif isinstance(value[0], bool):
+            elif isinstance(value, bool):
                 data_type = "boolean"
-            elif isinstance(value[0], float):
+            elif isinstance(value, int):
+                data_type = "integer"
+            elif isinstance(value, float):
                 data_type = "real"
-            elif isinstance(value[0], dict):
+            elif isinstance(value, dict):
                 data_type = "jsonb"
             else:
                 return "error"
@@ -476,7 +376,7 @@ class PostgreDBBinding():
         )
         # attr search
         if column_name2 != "" and column_value2 != "":
-            query2= sql.SQL("AND {column} = {value});").format(
+            query2= sql.SQL(" AND {column} = {value});").format(
                 column=sql.Identifier(column_name2),
                 value=sql.Literal(column_value2)
             )
@@ -489,129 +389,144 @@ class PostgreDBBinding():
             return True
         return False
 
-    def settingParm(PK, PK_value, column_name, column_value):
-        if column_name == PK:
-            columns = [PK]
+    def settingParm(self, PK_name, PK_value, column_name, column_value):
+        if column_name == PK_name:
+            columns = [PK_name]
             values = [PK_value]
         else :
-            columns = [PK, column_name]
+            columns = [PK_name, column_name]
             values = [PK_value, column_value]
+        print("setting parameter:", columns, values)
         return columns, values
 
     def Chain_Create_Table(self, schema_name, PK_value, table_info:dict, PK_name, PK_type, PK_condition):
         # Create_All_Table -> Chain_Create_Table(schema_name, column_value)
         # Chain_Create_Table(schema_name, sub_table_info) -> Chain_Create_Table(schema_name)
+        # First. PK table is already exists...
+        #        query = sql.SQL("INSERT INTO {schema}.{table} ({column}) VALUES ({value}) ON CONFLICT ({pk}) DO UPDATE SET {column}={new_val};")
+        self.upsert(schema_name, PK_name, PK_name, PK_value, PK_value, PK_name)
+        # Second. other...
         for column_name, column_value in table_info.items():
-                # column name equals table name
-                table_name = column_name
+            if column_name == PK_name:
+                continue
+            # column name equals table name
+            table_name = column_name
 
-                data_type = self.checkDataType(column_value)
-                condition = ""
-                # dict == column_value is sub_table_info
-                if data_type == "dict":
-                        # sub_PK_type           == data_type                == column_value's data type
-                        # sub_PK_condition      == condition                == column_value's condition == 
-                        condition = "PRIMARY KEY"
-                        # sub_PK_name           == column_name
-                        # sub_table_info        == column_value
-                        # sub_PK_values         == sub_table_info's keys    == sub_column_names == column_value's keys
-                        sub_PK_values = column_value.keys()
-                        # sub_PK_val            == sub_PK_value             == sub_column_name
-                        for sub_PK_val in sub_PK_values:
-                            # sub_column_value  == column_value's value     == sub_column_value
-                            sub_column_value = column_value.get(sub_PK_val)
+            data_type = self.checkDataType(column_value)
+            if data_type == "jsonb":
+                column_value = Jsonb(column_value)
 
-                            if self.hasTable(schema_name, table_name):
-                                # Exist
-                                # Does the value exist?
-                                if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, sub_column_value):
-                                    # Exist
-                                    # table_name---------------------
-                                    # "PK_name" |  "column_name"    |
-                                    # "PK_value"| "sub_column_value"|
-                                    # -------------------------------
-                                    # update data
-                                    self.update(schema_name, table_name, column_name, sub_column_value, PK_name, PK_value)
-                                else:
-                                    # Does not Exist
-                                    # table_name---------------------
-                                    # PK_name   |   column_name     |
-                                    # -         |   -               |
-                                    # -------------------------------
-                                    # insert data
-                                    columns, values = self.settingParm(PK_name, PK_value, column_name, sub_column_value)
-                                    self.insert(schema_name, table_name, columns, values)
-                                # Create sub table using sub_table_info
-                                # table_name---------------------  ->   sub_column_value---------------------
-                                # PK_name   |   column_name     |       column_name     | sub_column_value  |
-                                # PK_value  | sub_column_value  |          -            |   -               |
-                                # -------------------------------       -------------------------------------
-                                ### initial function ###
-                                #elf.Chain_Create_Table(schema_name, PK_value  , table_info    , PK_name    , PK_type  , PK_condition)
-                                ### recursive function ###
-                                #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition)
-                                self.Chain_Create_Table(schema_name, sub_PK_val, column_value, column_name, data_type, condition)
-                            else:
-                                # Create Table
-                                # table_name---------------------
-                                # PK_name   |   column_name     |
-                                # -         |   -               |
-                                # -------------------------------
-                                self.Create_Table(schema_name, table_name, PK_name, PK_type, PK_condition, column_name, data_type, condition)
-                                
-                                # Insert Value
-                                # table_name---------------------
-                                # PK_name   |   column_name     |
-                                # PK_value  |   sub_column_value|
-                                # -------------------------------
-                                columns, values = self.settingParm(PK_name, PK_value, column_name, sub_column_value)
-                                self.insert(schema_name, table_name, columns, values)
+            condition = ""
+            # dict == column_value is sub_table_info
+            if data_type == "dict":
+                # sub_PK_type           == data_type                == column_value's data type
+                data_type = "varchar(255)"
+                # sub_PK_condition      == condition                == column_value's condition == 
+                condition = "PRIMARY KEY"
+                # sub_PK_name           == column_name
+                # sub_table_info        == column_value
+                # sub_PK_values         == sub_table_info's keys    == sub_column_names == column_value's keys
+                sub_PK_values = column_value.keys() # type is not list...
+                # sub_PK_val            == sub_PK_value             == sub_column_name
+                for sub_PK_val in sub_PK_values:
+                    # sub_column_value  == sub_table_info's value   == sub_column_value == column_value's value
+                    sub_column_value = column_value.get(sub_PK_val)
 
-                                # Create sub table using sub_table_info
-                                ### initial function ###
-                                #elf.Chain_Create_Table(schema_name, PK_value  , table_info    , PK_name    , PK_type  , PK_condition)
-                                ### recursive function ###
-                                #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition) 
-                                self.Chain_Create_Table(schema_name, sub_PK_val, column_value, column_name, data_type, condition)
-
-                # not dict == search -> (update) or (create -> insert)
-                else:
-                    # Does the table exist?
                     if self.hasTable(schema_name, table_name):
                         # Exist
                         # Does the value exist?
-                        if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, column_value):
+                        if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, sub_PK_val):
                             # Exist
                             # table_name---------------------
                             # "PK_name" |  "column_name"    |
-                            # "PK_value"|  "column_value"   |
+                            # "PK_value"|  "sub_PK_value"   |
                             # -------------------------------
-                            self.update(schema_name, table_name, column_name, column_name, PK_name, PK_value)
+                            # update data
+                            self.update(schema_name, table_name, column_name, sub_PK_val, PK_name, PK_value)
                         else:
                             # Does not Exist
                             # table_name---------------------
                             # PK_name   |   column_name     |
                             # -         |   -               |
                             # -------------------------------
-                            columns, values = self.settingParm(PK_name, PK_value, column_name, sub_column_value)
+                            # insert data
+                            columns, values = self.settingParm(PK_name, PK_value, column_name, sub_PK_val)
                             self.insert(schema_name, table_name, columns, values)
-                    else:   
-                        # Does not exist 
+                        # Create sub table using sub_table_info
+                        # tab_id == table_name
+                        # case: pv - acr, pvs - acr
+                        # table_name---------------------  ->   sub_PK_value--------------------------------- 
+                        # PK_name   |   column_name     |       column_name:tab_id  | sub_column_name   |
+                        # PK_value  |   sub_PK_value    |          -                |   -               |
+                        # -------------------------------       ---------------------------------------------
+                        ### initial function ###
+                        #elf.Chain_Create_Table(schema_name, PK_value  , table_info    , PK_name    , PK_type  , PK_condition)
+                        ### recursive function ###
+                        #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition)
+                        self.Chain_Create_Table(schema_name, sub_PK_val, column_value, column_name, data_type, condition)
+                    else:
                         # Create Table
-                        self.Create_Table(schema_name, table_name, PK_name, PK_type, PK_condition, column_name, data_type, condition)
-                        # Insert value
-                        columns, values = self.settingParm(PK_name, PK_value, column_name, column_value)
+                        # table_name---------------------
+                        # PK_name   |   column_name     |
+                        # -         |   -               |
+                        # -------------------------------
+                        self.Create_Table(schema_name, table_name, PK_name, PK_type, "", column_name, data_type, condition)
+                        
+                        # Insert Value
+                        # table_name---------------------
+                        # PK_name   |   column_name     |
+                        # PK_value  |   sub_PK_value    |
+                        # -------------------------------
+                        columns, values = self.settingParm(PK_name, PK_value, column_name, sub_PK_val)
                         self.insert(schema_name, table_name, columns, values)
+
+                        # Create sub table using sub_table_info
+                        ### initial function ###
+                        #elf.Chain_Create_Table(schema_name, PK_value  , table_info    , PK_name    , PK_type  , PK_condition)
+                        ### recursive function ###
+                        #elf.Chain_Create_Table(schema_name, sub_PK_val, sub_table_info, sub_PK_name, data_type, condition) 
+                        self.Chain_Create_Table(schema_name, sub_PK_val, column_value, column_name, data_type, condition)
+
+            # not dict == search -> (update) or (create -> insert)
+            else:
+                # Does the table exist?
+                if self.hasTable(schema_name, table_name):
+                    # Exist
+                    # Does the value exist?
+                    if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, column_value):
+                        # Exist
+                        # table_name---------------------
+                        # "PK_name" |  "column_name"    |
+                        # "PK_value"|  "column_value"   |
+                        # -------------------------------
+                        self.update(schema_name, table_name, column_name, column_name, PK_name, PK_value)
+                    else:
+                        # Does not Exist
+                        # table_name---------------------
+                        # PK_name   |   column_name     |
+                        # -         |   -               |
+                        # -------------------------------
+                            
+                        columns, values = self.settingParm(PK_name, PK_value, column_name, column_value)    
+                        self.insert(schema_name, table_name, columns, values)
+                else:   
+                    # Does not exist 
+                    # Create Table
+                    self.Create_Table(schema_name, table_name, PK_name, PK_type, PK_condition, column_name, data_type, condition)
+                    # Insert value
+                    columns, values = self.settingParm(PK_name, PK_value, column_name, column_value)
+                        
+                    self.insert(schema_name, table_name, columns, values)  
 
     # createResource()
     # 테이블이랑 컬럼 생성
     def Create_All_Table(self, data:dict):
         # schema
         # keys() return data type is list
-        schema_name:list = data.keys()
+        schema_name:list = list(data.keys())
         schema_name:str = schema_name[0]
         update_data:dict = data.get(schema_name)
-        PK_values:list = update_data.keys()
+        PK_values:list = list(update_data.keys())
         
         PK, PK_type, PK_condition = self.WhoPK(schema_name)
         if PK == "error":
@@ -623,9 +538,9 @@ class PostgreDBBinding():
             self.Chain_Create_Table(schema_name, PK_val, table_info, PK, PK_type, PK_condition)
 
     def Create_Table_Jsonb(self, data:dict):
-        self.schema_name:list = data.keys() 
+        self.schema_name:list = list(data.keys()) 
         PK_info:dict = data.get(self.schema_name[0])
-        PK_info_key = PK_info.keys()
+        PK_info_key = list(PK_info.keys())
         PK = self.WhoPK(self.schema_name[0])
 
         json_data: dict = PK_info.get(PK_info_key)
@@ -651,17 +566,22 @@ json_file_path = os.path.join(current_directory, 'resource.json')
 
 with open(json_file_path, "r") as f:
     data_resources = json.load(f) 
-print(data_resources)
-print(type(data_resources))
+#print(data_resources)
+#print(type(data_resources))
 print(a:=data_resources.keys())
-a = a[0]
-print(a)
+for _ in a:
+    print(_)
+#print(b:=(data_resources.get(list(a)[0])))
+#print(type(b))
+#for a, b in data_resources.items():
+#    print(type(a), a)
+#    print(type(b), b)
 print("===============================")
 #("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
 
-#db = PostgreDBBinding(dbname='all_create')
-#db.Create_All_Table(data_resources)
-#db.__del__
+db = PostgreDBBinding(dbname='all_create')
+db.Create_All_Table(data_resources)
+db.__del__
 
 #sch = "resources"
 #tab = "ri"
