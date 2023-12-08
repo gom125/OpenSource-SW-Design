@@ -289,7 +289,7 @@ class PostgreDBBinding():
         query = sql.SQL("ALTER TABLE {schema_table} ADD CONSTRAINT {cons_name} FOREIGN KEY({column}) REFERENCES {schema_PK_table}({PK_column});").format(
             schema_table=sql.Identifier(schema_name, table_name),
             cons_name=sql.SQL(f'fk_{column}_{PK_column}'),
-            column=sql.SQL(column),
+            column=sql.SQL(PK_column),
             schema_PK_table=sql.Identifier(schema_name, PK_column),
             PK_column=sql.SQL(PK_column)
         )
@@ -618,7 +618,7 @@ with open(json_file_path, "r") as f:
 print("===============================")
 #("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
 
-db = PostgreDBBinding(dbname='all_create')
+db = PostgreDBBinding(dbname='test_v2')
 #db.hasColumn("resources", "acr", "acr", "pvs")
 #db.Add_Columns("resources", "acr", "pvs", "varchar(255)", "")
 #db.Add_FK("resources","acr", "pvs", "pvs")
