@@ -43,7 +43,7 @@ from ..resources.ACTR import ACTR
 from ..resources.SCH import SCH
 from ..resources.Factory import resourceFromDict
 from ..services.Logging import Logging as L
-
+from .PostgreDBBinder import PostgreDBBinding
 
 # Constants for database and table names
 _resources = 'resources'
@@ -75,6 +75,7 @@ class Storage(object):
 		'dbPath',
 		'dbReset',
 		'db',
+		'db_postgre'
 	)
 	""" Define slots for instance variables. """
 
@@ -97,6 +98,7 @@ class Storage(object):
 
 		# create DB object and open DB
 		self.db = TinyDBBinding(self.dbPath, CSE.cseCsi[1:]) # add CSE CSI as postfix
+		self.db_postgre = PostgreDBBinding(dbname='all_create')
 		""" The database object. """
 
 		# Reset dbs?
@@ -195,7 +197,11 @@ class Storage(object):
 		L.isDebug and L.logDebug(f'Creating DB backup in directory: {dir}')
 		os.makedirs(dir, exist_ok = True)
 		return self.db.backupDB(dir)
-		
+	
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSQL(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict)		
 
 	#########################################################################
 	##
@@ -229,6 +235,9 @@ class Storage(object):
 
 		# Add record to childResources db
 		self.db.upsertChildResource(resource, ri)
+
+		#Add PostgreSQL DB CRUD All of things
+		#self.db_postgre.Create_All_Table(resource.dict)
 
 
 	def hasResource(self, ri:Optional[str] = None, srn:Optional[str] = None) -> bool:
@@ -341,6 +350,10 @@ class Storage(object):
 		"""
 		ri = resource.ri
 		# L.logDebug(f'Updating resource (ty: {resource.ty}, ri: {ri}, rn: {resource.rn})')
+
+		#Add PostgreSQL DB CRUD All of things
+		#self.db_postgre.Create_All_Table(resource.dict)
+		
 		return self.db.updateResource(resource, ri)
 
 
@@ -358,6 +371,10 @@ class Storage(object):
 			self.db.deleteResource(resource)
 			self.db.deleteIdentifier(resource)
 			self.db.removeChildResource(resource)
+
+			#Add PostgreSQL DB CRUD All of things
+			#self.db_postgre.Create_All_Table(resource.dict)
+			
 		except KeyError:
 			raise NOT_FOUND(L.logDebug(f'Cannot remove: {resource.ri} (NOT_FOUND). Could be an expected error.'))
 
