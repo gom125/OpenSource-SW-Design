@@ -11,7 +11,7 @@ from psycopg.pq import Escaping
 
 #import psycopg2
 #import json
-from PostgreDBInit import *
+from .PostgreDBInit import *
 #from Storage import *
 
 # Constants for database and table names
@@ -70,7 +70,7 @@ class PostgreDBBinding():
             host='localhost', 
             dbname='acme', 
             user='postgres', 
-            password='post1234', 
+            password='dhksthxpa12', 
             port=5432
             ):
         
@@ -428,9 +428,11 @@ class PostgreDBBinding():
         
         result = self.execute(query=sql.Composed([query, query2]), msg="SELECT")
         # result's type is list, [(True,)]
-        if True in result[0]:
-            return True
-        return False
+        if result is not None:
+            if True in result[0]:
+                return True
+            return False
+        
 
     def settingParm(self, PK_name, PK_value, column_name, column_value):
         if column_name == PK_name:
@@ -581,6 +583,7 @@ class PostgreDBBinding():
     def Create_All_Table(self, data:dict):
         # schema
         # keys() return data type is list
+        print("Enter the Create all table!")
         schema_name:list = list(data.keys())
         schema_name:str = schema_name[0]
         update_data:dict = data.get(schema_name)
@@ -605,44 +608,3 @@ class PostgreDBBinding():
         #val = [PK_info_key, [Jsonb(self.json_data)]] 
         self.insert(self, table_name = self.schema_name[0], values= [PK_info_key, Jsonb(self.json_data)], columns="", schema_name="public")
         #self.insert(self, table_name = self.schema_name[0], values= val, columns="", schema_name="public")
-     
-    
-current_directory = os.path.dirname(__file__)
-json_file_path = os.path.join(current_directory, 'resource.json')
-
-with open(json_file_path, "r") as f:
-    data_resources = json.load(f) 
-
-
-
-print("===============================")
-#("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
-
-db = PostgreDBBinding(dbname='test_v2')
-#db.hasColumn("resources", "acr", "acr", "pvs")
-#db.Add_Columns("resources", "acr", "pvs", "varchar(255)", "")
-#db.Add_FK("resources","acr", "pvs", "pvs")
-db.Create_All_Table(data_resources)
-db.__del__
-
-#sch = "resources"
-#tab = "ri"
-#val = "5678"
-#Pri = "ri"
-#Pri_val = "1234"
-#res = db.hasTable(sch, tab)
-#print("hasTable:", res)
-#res = db.hasValue(sch, tab, Pri, Pri_val)
-#print("hasValue:", res)
-#res = db.update(sch, tab, tab, val, Pri, Pri_val)
-#print("update:", res)
-#res = db.upsert(sch, tab, )
-#try:
-#    db.insert(table_name= "srn", columns= ['srn', 'ri'], values=['5678', '43'])
-#    '''db.cur.execute("INSERT INTO public.resources(ri, m2m_attr) VALUES (%s, %s);", ("19011598", data_resources))
-#    db.conn.commit()'''
-#except Exception as e:
-#    print(e)
-
-#db.__del__
-
