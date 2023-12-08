@@ -274,6 +274,35 @@ class PostgreDBBinding():
         print()
         self.execute(query, "CREATE")
 
+    # 이미 생성된 테이블에 추가하는 방식
+    def Add_Columns(self, schema_name, table_name, column_name, data_type, condition):        
+        query = sql.SQL("ALTER TABLE {schema_table} ADD COLUMN {col} {type} {con}").format(
+            schema_table=sql.Identifier(schema_name, table_name),
+            col=sql.Identifier(column_name),
+            type=sql.SQL(data_type),
+            con=sql.SQL(condition)
+        )
+        print(query.as_string(self.conn))
+        self.execute(query, 'ALTER')
+
+    def Add_FK(self, schema_name, table_name, PK_column, column):
+        query = sql.SQL("ALTER TABLE {schema_table} ADD CONSTRAINT {cons_name} FOREIGN KEY({column}) REFERENCES {schema_PK_table}({PK_column});").format(
+            schema_table=sql.Identifier(schema_name, table_name),
+            cons_name=sql.SQL(f'fk_{column}_{PK_column}'),
+            column=sql.SQL(column),
+            schema_PK_table=sql.Identifier(schema_name, PK_column),
+            PK_column=sql.SQL(PK_column)
+        )
+        print(query.as_string(self.conn))
+        self.execute(query, "ALTER")
+
+    def Add_PK(self, schema_name, table_name, column):
+        query = sql.SQL("ALTER TABLE {schema_table} ADD PRIMARY KEY ({column});").format(
+            schema_table=sql.Identifier(schema_name, table_name),
+            column=sql.SQL(column)
+        )
+        print(query.as_string(self.conn))
+        self.execute(query, "ALTER")
 
     def PostgreSCHEMA(self, schema_name):
         self.Create_Schema(schema_name)
@@ -366,6 +395,20 @@ class PostgreDBBinding():
         if True in result[0]:
             return True
         return False
+    
+    def hasColumn(self, schema_name, table_name, column1, column2):
+        query=sql.SQL("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = {schema} AND TABLE_NAME = {table} AND COLUMN_NAME IN ( {col1}, {col2} )").format(
+            schema=sql.Literal(schema_name),
+            table=sql.Literal(table_name),
+            col1=sql.Literal(column1),
+            col2=sql.Literal(column2)
+        )
+        print(query.as_string(self.conn))
+        res = self.execute(query, "SELECT")
+        #print(type(res), len(res), res)
+        if len(res) == 2:
+            return True
+        return False
         
     def hasValue(self, schema_name, table_name, column_name1, column_value1, column_name2="", column_value2=""):
         # PK search
@@ -435,6 +478,10 @@ class PostgreDBBinding():
                     if self.hasTable(schema_name, table_name):
                         # Exist
                         # Does the value exist?
+                        addColumn = self.hasColumn(schema_name, table_name, PK_name, column_name) 
+                        if addColumn == False:
+                            self.Add_Columns(schema_name, table_name, PK_name, PK_type, "")
+
                         if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, sub_PK_val):
                             # Exist
                             # table_name---------------------
@@ -452,6 +499,10 @@ class PostgreDBBinding():
                             # insert data
                             columns, values = self.settingParm(PK_name, PK_value, column_name, sub_PK_val)
                             self.insert(schema_name, table_name, columns, values)
+
+                        if addColumn == False:
+                            self.Add_FK(schema_name, table_name, PK_name, column_name)
+
                         # Create sub table using sub_table_info
                         # tab_id == table_name
                         # case: pv - acr, pvs - acr
@@ -492,6 +543,9 @@ class PostgreDBBinding():
                 # Does the table exist?
                 if self.hasTable(schema_name, table_name):
                     # Exist
+                    addColumn = self.hasColumn(schema_name, table_name, PK_name, column_name) 
+                    if addColumn == False:
+                        self.Add_Columns(schema_name, table_name, PK_name, PK_type, "")
                     # Does the value exist?
                     if self.hasValue(schema_name, table_name, PK_name, PK_value, column_name, column_value):
                         # Exist
@@ -509,6 +563,10 @@ class PostgreDBBinding():
                             
                         columns, values = self.settingParm(PK_name, PK_value, column_name, column_value)    
                         self.insert(schema_name, table_name, columns, values)
+                    
+                    if addColumn == False:
+                        self.Add_FK(schema_name, table_name, PK_name, column_name)
+                    
                 else:   
                     # Does not exist 
                     # Create Table
@@ -547,39 +605,23 @@ class PostgreDBBinding():
         #val = [PK_info_key, [Jsonb(self.json_data)]] 
         self.insert(self, table_name = self.schema_name[0], values= [PK_info_key, Jsonb(self.json_data)], columns="", schema_name="public")
         #self.insert(self, table_name = self.schema_name[0], values= val, columns="", schema_name="public")
-        
-    # createResource()
-    # 이미 생성된 테이블에 추가하는 방식
-    def Add_Columns(self, table_name, columns:list, types:list, condition:list, schema_name="public"):
-        assert table_name is not None, "table_name is not allowed None"
-        assert columns is not None, "columns is not allowed None"
-        assert condition is not None, "condition is not allowed None"
-        
-        for col, type, con in zip(columns, types, condition):
-            query = f'ALTER TABLE {table_name} ADD COLUMN {col} {type} {con}'
-            self.execute(query, 'ALTER')
-
-        self.conn.commit()
+     
     
 current_directory = os.path.dirname(__file__)
 json_file_path = os.path.join(current_directory, 'resource.json')
 
 with open(json_file_path, "r") as f:
     data_resources = json.load(f) 
-#print(data_resources)
-#print(type(data_resources))
-print(a:=data_resources.keys())
-for _ in a:
-    print(_)
-#print(b:=(data_resources.get(list(a)[0])))
-#print(type(b))
-#for a, b in data_resources.items():
-#    print(type(a), a)
-#    print(type(b), b)
+
+
+
 print("===============================")
 #("INSERT INTO product(store_id, url, price, charecteristics, color, dimensions) VALUES (%d, %s, %s, %d, %s, %s)", (1,  'http://www.google.com', '$20', thedictionary, 'red', '8.5x11'))
 
 db = PostgreDBBinding(dbname='all_create')
+#db.hasColumn("resources", "acr", "acr", "pvs")
+#db.Add_Columns("resources", "acr", "pvs", "varchar(255)", "")
+#db.Add_FK("resources","acr", "pvs", "pvs")
 db.Create_All_Table(data_resources)
 db.__del__
 
