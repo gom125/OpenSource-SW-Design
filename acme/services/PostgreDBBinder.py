@@ -580,23 +580,18 @@ class PostgreDBBinding():
 
     # createResource()
     # 테이블이랑 컬럼 생성
-    def Create_All_Table(self, data:dict):
+    def Create_All_Table(self, data:dict, ri: str, schema_name: str):
         # schema
         # keys() return data type is list
-        print("Enter the Create all table!")
-        schema_name:list = list(data.keys())
-        schema_name:str = schema_name[0]
-        update_data:dict = data.get(schema_name)
-        PK_values:list = list(update_data.keys())
-        
+        print("update_data에서 성공")
+        print(data)
+        print(ri)
+        print(schema_name)
+
         PK, PK_type, PK_condition = self.WhoPK(schema_name)
         if PK == "error":
             return Exception("Schema name is incorrect")
-
-        for PK_val in PK_values:
-            # table_info is dict
-            table_info:dict = update_data.get(PK_val)
-            self.Chain_Create_Table(schema_name, PK_val, table_info, PK, PK_type, PK_condition)
+        self.Chain_Create_Table(schema_name, ri, data, PK, PK_type, PK_condition)
 
     def Create_Table_Jsonb(self, data:dict):
         self.schema_name:list = list(data.keys()) 

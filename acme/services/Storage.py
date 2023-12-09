@@ -98,7 +98,7 @@ class Storage(object):
 
 		# create DB object and open DB
 		self.db = TinyDBBinding(self.dbPath, CSE.cseCsi[1:]) # add CSE CSI as postfix
-		self.db_postgre = PostgreDBBinding(dbname='test_v5')
+		self.db_postgre = PostgreDBBinding(dbname='test_db')
 		""" The database object. """
 
 		# Reset dbs?
@@ -200,8 +200,53 @@ class Storage(object):
 	
 
 	#Add PostgreSQL DB CRUD All of things
-	def addPostgreSQL(self, resource: Resource) -> None:
-		self.db_postgre.Create_All_Table(resource.dict)		
+	def addPostgreSqlResource(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'resources')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlIdentifiers(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'identifiers')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlSrn(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'srn')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlChildren(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'children')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlSubscriptions(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'subscriptions')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlStatistics(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'statistics')
+
+
+	#Add PostgreSqlActions DB CRUD All of things
+	def addPostgreSQLResource(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'actions')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlBatchnotifications(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'batchnotifications')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlRequests(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'requests')
+
+
+	#Add PostgreSQL DB CRUD All of things
+	def addPostgreSqlSchedules(self, resource: Resource) -> None:
+		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'schedules')
 
 	#########################################################################
 	##
@@ -219,12 +264,11 @@ class Storage(object):
 			Raises:
 				CONFLICT: In case the resource already exists and *overwrite* is "False".
 		"""
-		print('create Resource is executing')
-		
-		#Add PostgreSQL DB CRUD All of things
-		self.db_postgre.Create_All_Table(resource.dict)
-
 		ri  = resource.ri
+
+		#Add PostgreSQL DB CRUD All of things
+		self.addPostgreSqlResource(resource)
+		
 		srn = resource.getSrn()
 		if overwrite:
 			L.isDebug and L.logDebug('Resource enforced overwrite')
@@ -355,7 +399,7 @@ class Storage(object):
 		# L.logDebug(f'Updating resource (ty: {resource.ty}, ri: {ri}, rn: {resource.rn})')
 
 		#Add PostgreSQL DB CRUD All of things
-		self.db_postgre.Create_All_Table(resource.dict)
+		self.addPostgreSqlResource(resource)
 		
 		return self.db.updateResource(resource, ri)
 

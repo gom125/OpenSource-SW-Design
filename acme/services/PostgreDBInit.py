@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS batchnotifications (
 	ri varchar(255),
 	nu varchar(255),
 	tstamp timstamp,
-	request text
+	request jsonb
 );"""
 
 table_requests_query = """
@@ -299,7 +299,7 @@ CREATE TABLE IF NOT EXISTS batchnotifications.tstamp (
 );
 CREATE TABLE IF NOT EXISTS batchnotifications.request (
 	id serial,
-	request text,
+	request jsonb,
 	FOREIGN KEY (id) REFERENCES batchnotifications.id(id)
 );"""
 
