@@ -199,55 +199,80 @@ class Storage(object):
 		os.makedirs(dir, exist_ok = True)
 		return self.db.backupDB(dir)
 	
+	#########################################################################
+	##
+	##	PostgreSQL Wrapper
+	##
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlResource(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'resources')
 
+	def deletePostgreSqlResource(self, resource: Resource) -> None:
+		self.db_postgre.delete('resources', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlIdentifiers(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'identifiers')
 
+	def deletePostgreSqlIdentifiers(self, resource: Resource) -> None:
+		self.db_postgre.delete('identifiers', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlSrn(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'srn')
 
+	def deletePostgreSqlResource(self, resource: Resource) -> None:
+		self.db_postgre.delete('resources', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlChildren(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'children')
 
+	def deletePostgreSqlChildren(self, resource: Resource) -> None:
+		self.db_postgre.delete('children', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlSubscriptions(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'subscriptions')
 
+	def deletePostgreSqlSubscriptions(self, resource: Resource) -> None:
+		self.db_postgre.delete('subscriptions', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlStatistics(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'statistics')
 
+	def deletePostgreSqlStatistics(self, resource: Resource) -> None:
+		self.db_postgre.delete('statistics', 'ri', resource.ri)
 
 	#Add PostgreSqlActions DB CRUD All of things
-	def addPostgreSQLResource(self, resource: Resource) -> None:
+	def addPostgreSQLActions(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'actions')
 
+	def deletePostgreSqlActions(self, resource: Resource) -> None:
+		self.db_postgre.delete('actions', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlBatchnotifications(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'batchnotifications')
 
+	def deletePostgreSqlBatchnotifications(self, resource: Resource) -> None:
+		self.db_postgre.delete('batchnotifications', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlRequests(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'requests')
 
+	def deletePostgreSqlRequests(self, resource: Resource) -> None:
+		self.db_postgre.delete('requests', 'ri', resource.ri)
 
 	#Add PostgreSQL DB CRUD All of things
 	def addPostgreSqlSchedules(self, resource: Resource) -> None:
 		self.db_postgre.Create_All_Table(resource.dict, resource.ri, 'schedules')
+
+	def deletePostgreSqlSchedules(self, resource: Resource) -> None:
+		self.db_postgre.delete('schedules', 'ri', resource.ri)
 
 	#########################################################################
 	##
@@ -403,7 +428,7 @@ class Storage(object):
 		# L.logDebug(f'Updating resource (ty: {resource.ty}, ri: {ri}, rn: {resource.rn})')
 
 		#Add PostgreSQL DB CRUD All of things
-		self.addPostgreSqlResource(resource)		
+		self.addPostgreSqlResource(resource)	
 		return self.db.updateResource(resource, ri)
 
 
@@ -581,6 +606,9 @@ class Storage(object):
 				Boolean value to indicate success or failure.
 		"""
 		# L.logDebug(f'Adding subscription: {ri}')
+		
+		self.addPostgreSqlSubscriptions(self, subscription)
+
 		return self.db.upsertSubscription(subscription)
 
 
